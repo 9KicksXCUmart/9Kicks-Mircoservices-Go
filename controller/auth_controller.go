@@ -67,7 +67,7 @@ func Signup(c *gin.Context) {
 		PK:        "USER#" + uuid.New().String(),
 		SK:        "USER_PROFILE",
 		Email:     user.Email,
-		Password:  hashedPassword,
+		Password:  string(hashedPassword),
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
 	}
@@ -127,9 +127,9 @@ func Login(c *gin.Context) {
 
 	item := result.Items[0]
 
-	storedPassword := item["password"].(*types.AttributeValueMemberB).Value
+	storedPassword := item["password"].(*types.AttributeValueMemberS).Value
 
-	err = bcrypt.CompareHashAndPassword(storedPassword, []byte(user.Password))
+	err = bcrypt.CompareHashAndPassword([]byte(storedPassword), []byte(user.Password))
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
 		return

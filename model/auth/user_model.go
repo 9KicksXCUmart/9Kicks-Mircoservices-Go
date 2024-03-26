@@ -16,7 +16,7 @@ type UserProfile struct {
 	PK                string            `dynamodbav:"PK"`
 	SK                string            `dynamodbav:"SK"`
 	Email             string            `dynamodbav:"email"`
-	Password          []byte            `dynamodbav:"password"`
+	Password          string            `dynamodbav:"password"`
 	FirstName         string            `dynamodbav:"firstName"`
 	LastName          string            `dynamodbav:"lastName"`
 	ShippingAddress   map[string]string `dynamodbav:"shippingAddress"`
