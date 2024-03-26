@@ -24,6 +24,11 @@ type Secrets struct {
 	JWTAdminSecret string `json:"JWT_ADMIN_SECRET"`
 }
 
+type TokenParams struct {
+	ZOHOTokenParams string `json:"ZOHO_TOKEN_PARAMS"`
+	ZOHOAccountNo   string `json:"ZOHO_ACCOUNT_NO"`
+}
+
 func init() {
 	err := godotenv.Load()
 	if err != nil {
@@ -71,30 +76,27 @@ func GetJWTSecrets() Secrets {
 	return secrets
 }
 
-//func init() {
-//
-//	fmt.Println("config init")
-//awsAccessKeyID := "AKIA333U776S2ZMRH3LT"
-//awsSecretAccessKey := "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"
-//staticCredProvider := credentials.NewStaticCredentialsProvider(awsAccessKeyID, awsSecretAccessKey, "")
-//cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithCredentialsProvider(staticCredProvider), config.WithRegion("ap-southeast-1"))
-//if err != nil {
-//	log.Fatalf("unable to load SDK config, %v", err)
-//}
-//
-//// Using the Config value, create the DynamoDB client
-//svc := dynamodb.NewFromConfig(cfg)
-//
-//// Build the request with its input parameters
-//resp, err := svc.ListTables(context.TODO(), &dynamodb.ListTablesInput{
-//	Limit: aws.Int32(5),
-//})
-//if err != nil {
-//	log.Fatalf("failed to list tables, %v", err)
-//}
-//
-//fmt.Println("Tables:")
-//for _, tableName := range resp.TableNames {
-//	fmt.Println(tableName)
-//}
-//}
+func GetTokenParams() TokenParams {
+	secretName := "9Kicks-email"
+
+	// Create Secrets Manager client
+	secretsManagerClient := secretsmanager.NewFromConfig(cfg)
+
+	input := &secretsmanager.GetSecretValueInput{
+		SecretId:     aws.String(secretName),
+		VersionStage: aws.String("AWSCURRENT"), // VersionStage defaults to AWSCURRENT if unspecified
+	}
+
+	result, err := secretsManagerClient.GetSecretValue(context.TODO(), input)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	// Decrypts secret using the associated KMS key.
+	var tokenParams TokenParams
+	err = json.Unmarshal([]byte(*result.SecretString), &tokenParams)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	return tokenParams
+}
