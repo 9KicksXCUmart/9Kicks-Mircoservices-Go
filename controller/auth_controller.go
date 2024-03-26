@@ -3,6 +3,7 @@ package controller
 import (
 	"9Kicks/config"
 	"9Kicks/model/auth"
+	"9Kicks/util"
 	"context"
 	"fmt"
 	"net/http"
@@ -14,19 +15,45 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
 var (
 	jwtKey         = []byte(config.GetJWTSecrets().JWTUserSecret)
 	dynamoDBClient = config.GetDynamoDBClient()
-	tableName      = "test-9Kicks"
+	tableName      = "9Kicks-test"
+	gsiName        = "User-email-index"
 )
 
 func Signup(c *gin.Context) {
-	var user auth.User
+	var user auth.UserSignUpForm
 	if err := c.ShouldBindJSON(&user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Check if the email already exists
+	queryParams := &dynamodb.QueryInput{
+		TableName:              aws.String(tableName),
+		IndexName:              aws.String("User-email-index"),
+		KeyConditionExpression: aws.String("#pk = :email"),
+		ExpressionAttributeNames: map[string]string{
+			"#pk": "email",
+		},
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":email": &types.AttributeValueMemberS{Value: user.Email},
+		},
+	}
+
+	result, err := dynamoDBClient.Query(context.TODO(), queryParams)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check email"})
+		return
+	}
+
+	if len(result.Items) > 0 {
+		c.JSON(http.StatusConflict, gin.H{"error": "Email already exists"})
 		return
 	}
 
@@ -36,15 +63,27 @@ func Signup(c *gin.Context) {
 		return
 	}
 
-	input := &dynamodb.PutItemInput{
-		TableName: aws.String(tableName),
-		Item: map[string]types.AttributeValue{
-			"email":    &types.AttributeValueMemberS{Value: user.Email},
-			"password": &types.AttributeValueMemberB{Value: hashedPassword},
-		},
+	userProfile := auth.UserProfile{
+		PK:        "USER#" + uuid.New().String(),
+		SK:        "USER_PROFILE",
+		Email:     user.Email,
+		Password:  hashedPassword,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
 	}
 
-	_, err = dynamoDBClient.PutItem(context.TODO(), input)
+	profileItem, err := util.StructToAttributeValue(userProfile)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to convert struct to attribute value"})
+		return
+	}
+
+	putParams := &dynamodb.PutItemInput{
+		TableName: aws.String(tableName),
+		Item:      profileItem,
+	}
+
+	_, err = dynamoDBClient.PutItem(context.TODO(), putParams)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
 		return
@@ -54,31 +93,41 @@ func Signup(c *gin.Context) {
 }
 
 func Login(c *gin.Context) {
-	var user auth.User
+	var user auth.UserLoginForm
+	fmt.Println("DLLM")
 	if err := c.ShouldBindJSON(&user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	input := &dynamodb.GetItemInput{
-		TableName: aws.String(tableName),
-		Key: map[string]types.AttributeValue{
-			"email": &types.AttributeValueMemberS{Value: user.Email},
+	IndexPartitionKeyName := "email"
+
+	input := &dynamodb.QueryInput{
+		TableName:              aws.String(tableName),
+		IndexName:              aws.String(gsiName),
+		KeyConditionExpression: aws.String("#pk = :email"),
+		ExpressionAttributeNames: map[string]string{
+			"#pk": IndexPartitionKeyName,
+		},
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":email": &types.AttributeValueMemberS{Value: user.Email},
 		},
 	}
 
-	result, err := dynamoDBClient.GetItem(context.TODO(), input)
+	result, err := dynamoDBClient.Query(context.TODO(), input)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user"})
 		return
 	}
 
-	if result.Item == nil {
+	if len(result.Items) == 0 {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
 		return
 	}
 
-	storedPassword := result.Item["password"].(*types.AttributeValueMemberB).Value
+	item := result.Items[0]
+
+	storedPassword := item["password"].(*types.AttributeValueMemberB).Value
 
 	err = bcrypt.CompareHashAndPassword(storedPassword, []byte(user.Password))
 	if err != nil {
