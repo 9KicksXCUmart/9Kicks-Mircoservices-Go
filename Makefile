@@ -8,7 +8,7 @@ vet: fmt
 	go vet ./...
 
 build: vet
-	go build
+	air
 
 clean:
 	rm -f hello_world

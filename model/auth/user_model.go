@@ -22,4 +22,6 @@ type UserProfile struct {
 	ShippingAddress   map[string]string `dynamodbav:"shippingAddress"`
 	CreditCardDetails map[string]string `dynamodbav:"creditCardDetails"`
 	IsVerified        bool              `dynamodbav:"isVerified"`
+	VerificationToken string            `dynamodbav:"verificationToken"`
+	TokenExpiry       int64             `dynamodbav:"tokenExpiry"`
 }

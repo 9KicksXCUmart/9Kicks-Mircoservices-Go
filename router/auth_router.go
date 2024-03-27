@@ -15,6 +15,7 @@ func InitRouter() *gin.Engine {
 	})
 
 	r.POST("/signup", controller.Signup)
+	r.POST("/verify-email", controller.VerifyEmail)
 	r.POST("/login", controller.Login)
 	r.GET("/validate", controller.ValidateToken)
 
