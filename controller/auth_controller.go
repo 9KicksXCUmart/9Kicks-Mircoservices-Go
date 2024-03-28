@@ -252,6 +252,11 @@ func VerifyEmail(c *gin.Context) {
 	}
 
 	item := result.Items[0]
+	isVerified := item["isVerified"].(*types.AttributeValueMemberBOOL).Value
+	if isVerified {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Email already verified"})
+		return
+	}
 
 	storedToken := item["verificationToken"].(*types.AttributeValueMemberS).Value
 	tokenExpirationTime, _ := strconv.ParseInt(item["tokenExpiry"].(*types.AttributeValueMemberN).Value, 10, 64)

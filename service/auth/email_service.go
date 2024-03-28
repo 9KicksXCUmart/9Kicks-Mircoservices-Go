@@ -2,11 +2,14 @@ package auth
 
 import (
 	"9Kicks/config"
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"path/filepath"
 	"strings"
 )
 
@@ -42,23 +45,61 @@ func GetAccessToken() (string, string) {
 	return fmt.Sprintf("%s", token), accountNo
 }
 
-func SendEmailTo(email string) {
+func SendEmailTo(email, token string) {
 	accessToken, accountNo := GetAccessToken()
-	url := "https://mail.zoho.jp/api/accounts/" + accountNo + "/messages"
+	requestUrl := "https://mail.zoho.jp/api/accounts/" + accountNo + "/messages"
 	method := "POST"
 
-	//payload := strings.NewReader(`{
-	//  "fromAddress": "noreply@9kicks.shop",
-	//  "toAddress": "nickwkt2001@gmail.com",
-	//  "subject": "Email Verification",
-	//  "mailFormat": "html",
-	//  "content": "9Kicks shop"
-	//}`)
-	payload := strings.NewReader(fmt.Sprintf(`{ "fromAddress": "noreply@9kicks.shop", "toAddress": "%s", "ccAddress": "", "subject": "Email Verification", "mailFormat": "html", "content": "9Kicks shop" }`, email))
-	//fmt.Println(aod)
+	// Load the email template
+	templatePath, _ := filepath.Abs("template/verify-email.html")
+	tmpl, err := template.ParseFiles(templatePath)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	data := struct {
+		Token string
+		Email string
+	}{
+		Token: token,
+		Email: email,
+	}
+
+	// Execute the template and get the rendered HTML
+	var emailBody bytes.Buffer
+	err = tmpl.Execute(&emailBody, data)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	type EmailContent struct {
+		FromAddress string `json:"fromAddress"`
+		ToAddress   string `json:"toAddress"`
+		CcAddress   string `json:"ccAddress"`
+		Subject     string `json:"subject"`
+		MailFormat  string `json:"mailFormat"`
+		Content     string `json:"content"`
+	}
+
+	emailContent := EmailContent{
+		FromAddress: "noreply@9kicks.shop",
+		ToAddress:   email,
+		CcAddress:   "",
+		Subject:     "Email Verification",
+		MailFormat:  "html",
+		Content:     emailBody.String(),
+	}
+
+	contentBytes, err := json.Marshal(emailContent)
+	contentString := strings.Replace(string(contentBytes), `\u003c`, `<`, -1)
+	contentString = strings.Replace(contentString, `\u003e`, `>`, -1)
+	contentString = strings.Replace(contentString, `\u0026`, `&`, -1)
+	payload := strings.NewReader(contentString)
 
 	client := &http.Client{}
-	req, err := http.NewRequest(method, url, payload)
+	req, err := http.NewRequest(method, requestUrl, payload)
 
 	if err != nil {
 		log.Fatal(err)
