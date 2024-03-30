@@ -19,11 +19,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var (
 	jwtKey                = []byte(config.GetJWTSecrets().JWTUserSecret)
+	secretKey             = config.GetJWTSecrets().JWTUserSecret
 	dynamoDBClient        = config.GetDynamoDBClient()
 	tableName             = os.Getenv("DB_TABLE_NAME")
 	gsiName               = "User-email-index"
@@ -73,67 +73,47 @@ func Login(c *gin.Context) {
 	var user auth_model.UserLoginForm
 
 	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error()})
 		return
 	}
 
-	// Query the user profile by email
-	input := &dynamodb.QueryInput{
-		TableName:              aws.String(tableName),
-		IndexName:              aws.String(gsiName),
-		KeyConditionExpression: aws.String("#pk = :email"),
-		ExpressionAttributeNames: map[string]string{
-			"#pk": indexPartitionKeyName,
-		},
-		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":email": &types.AttributeValueMemberS{Value: user.Email},
-		},
+	exists, _ := auth_service.CheckEmailExists(user.Email)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "This email is not registered"})
+		return
 	}
 
-	result, err := dynamoDBClient.Query(context.TODO(), input)
+	userProfile, err := auth_service.GetUserProfileByEmail(user.Email)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to retrieve user profile"})
 		return
 	}
 
-	if len(result.Items) == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
-		return
-	}
-
-	item := result.Items[0]
-
-	// Compare the input password with the stored password
-	storedPassword := item["password"].(*types.AttributeValueMemberS).Value
-
-	err = bcrypt.CompareHashAndPassword([]byte(storedPassword), []byte(user.Password))
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
+	// Check if the password is correct
+	isValidPassword := auth_service.IsValidPassword(userProfile.Password, user.Password)
+	if !isValidPassword {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Wrong password"})
 		return
 	}
 
 	// Check if the email is verified
-	isVerified := item["isVerified"].(*types.AttributeValueMemberBOOL).Value
-	if !isVerified {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Email not verified"})
+	if !userProfile.IsVerified {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Email not verified"})
 		return
 	}
 
-	// Set jwt token expiration to be 1 hour
-	expirationTime := time.Now().Add(time.Hour)
-	claims := &auth_model.Claims{
-		Email: user.Email,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(expirationTime),
-		},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(jwtKey)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
-		return
-	}
+	parts := strings.Split(userProfile.PK, "#")
+	tokenString, expirationTime, err := auth_service.GenerateJWT(secretKey, user.Email, parts[1])
 
 	// Set the jwt token in a cookie
 	http.SetCookie(c.Writer, &http.Cookie{
@@ -144,7 +124,9 @@ func Login(c *gin.Context) {
 		SameSite: http.SameSiteStrictMode, // Set SameSite policy to Strict
 	})
 
-	c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Login successful"})
 }
 
 func ValidateToken(c *gin.Context) {

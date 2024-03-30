@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -17,6 +18,15 @@ func CheckEmailExists(email string) (bool, error) {
 	}
 
 	return len(userProfiles) > 0, nil
+}
+
+func GetUserProfileByEmail(email string) (auth_model.UserProfile, error) {
+	userProfiles, err := dao.GetUserProfileByEmail(email)
+	if err != nil {
+		return userProfiles[0], err
+	}
+
+	return userProfiles[0], nil
 }
 
 func CreateUser(email, firstName, lastName, password string) (token string, success bool) {
@@ -41,6 +51,31 @@ func CreateUser(email, firstName, lastName, password string) (token string, succ
 	}
 
 	return verificationToken, dao.AddNewUserProfile(userProfile)
+}
+
+func IsValidPassword(hashedPassword, password string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+	return err == nil
+}
+
+func GenerateJWT(secretKey, email, userID string) (string, time.Time, error) {
+	// Set jwt token expiration to be 1 hour
+	expirationTime := time.Now().Add(time.Hour)
+	claims := &auth_model.Claims{
+		Email:  email,
+		UserID: userID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString([]byte(secretKey))
+	if err != nil {
+		return "", time.Time{}, err
+	}
+
+	return tokenString, expirationTime, nil
 }
 
 func generateVerificationToken() (string, int64) {
