@@ -8,7 +8,11 @@ vet: fmt
 	go vet ./...
 
 build: vet
-	go build
+	air
 
 clean:
 	rm -f hello_world
+
+setup:
+	go mod download
+	go install github.com/cosmtrek/air@latest

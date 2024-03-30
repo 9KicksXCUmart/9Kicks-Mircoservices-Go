@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com/office/office">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Email Verification</title>
+    <style>
+        /* Add your CSS styles here */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .verify-button {
+            display: inline-block;
+            background-color: #007bff;
+            color: #ffffff;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Email Verification</h1>
+    <p>Thank you for signing up with 9Kicks shop. Please verify your email address by clicking the button below:</p>
+    <a href="http://0.0.0.0:8080/verify-email?token={{.Token}}&email={{.Email}}" class="verify-button">Verify Email</a>
+    <p>If the button doesn't work, you can copy and paste the following link into your browser:</p>
+    <p>http://0.0.0.0:8080/verify-email?token={{.Token}}&email={{.Email}}</p>
+</div>
+</body>
+</html>
