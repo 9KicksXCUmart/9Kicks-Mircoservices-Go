@@ -138,7 +138,9 @@ func ValidateToken(c *gin.Context) {
 
 	parts := strings.Split(authHeader, " ")
 	if len(parts) != 2 || parts[0] != "Bearer" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Authorization header format"})
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Invalid Authorization header format"})
 		return
 	}
 
@@ -152,17 +154,28 @@ func ValidateToken(c *gin.Context) {
 	})
 
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Invalid token"})
 		return
 	}
 
 	claims, ok := token.Claims.(*auth_model.Claims)
 	if !ok || !token.Valid {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Invalid token"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"email": claims.Email})
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Token is valid",
+		"data": gin.H{
+			"email":   claims.Email,
+			"user_id": claims.UserID,
+		},
+	})
 }
 
 func ResendVerificationEmail(c *gin.Context) {

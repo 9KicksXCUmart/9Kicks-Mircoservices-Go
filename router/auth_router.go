@@ -18,7 +18,7 @@ func InitRouter() *gin.Engine {
 	r.POST("/verify-email", controller.VerifyEmail)
 	r.POST("/resend-email", controller.ResendVerificationEmail)
 	r.POST("/login", controller.Login)
-	r.GET("/validate", controller.ValidateToken)
+	r.GET("/validateToken", controller.ValidateToken)
 
 	return r
 }
