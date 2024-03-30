@@ -33,30 +33,40 @@ var (
 func Signup(c *gin.Context) {
 	var user auth_model.UserSignUpForm
 	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error()})
 		return
 	}
 
 	exists, _ := auth_service.CheckEmailExists(user.Email)
 	if exists {
-		c.JSON(http.StatusConflict, gin.H{"error": "Email already exists"})
+		c.JSON(http.StatusConflict, gin.H{
+			"success": false,
+			"message": "Email already exists"})
 		return
 	}
 
 	verificationToken, success := auth_service.CreateUser(user.Email, user.FirstName, user.LastName, user.Password)
 	if !success {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to create user"})
 		return
 	}
 
 	// Send verification email
 	err := auth_service.SendEmailTo(user.Email, verificationToken)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send verification email"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to send verification email"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "A verification email has been sent to your email address. Please verify your email to complete registration"})
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "A verification email has been sent to your email address. Please verify your email to complete registration"})
 }
 
 func Login(c *gin.Context) {
