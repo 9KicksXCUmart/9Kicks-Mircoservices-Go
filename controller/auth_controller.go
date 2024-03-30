@@ -2,11 +2,10 @@ package controller
 
 import (
 	"9Kicks/config"
-	"9Kicks/model/auth_model"
-	"9Kicks/service/auth_service"
+	. "9Kicks/model/auth"
+	"9Kicks/service/auth"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -15,15 +14,11 @@ import (
 )
 
 var (
-	secretKey             = config.GetJWTSecrets().JWTUserSecret
-	dynamoDBClient        = config.GetDynamoDBClient()
-	tableName             = os.Getenv("DB_TABLE_NAME")
-	gsiName               = "User-email-index"
-	indexPartitionKeyName = "email"
+	secretKey = config.GetJWTSecrets().JWTUserSecret
 )
 
 func Signup(c *gin.Context) {
-	var user auth_model.UserSignUpForm
+	var user UserSignUpForm
 	if err := c.ShouldBindJSON(&user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -31,7 +26,7 @@ func Signup(c *gin.Context) {
 		return
 	}
 
-	exists, _ := auth_service.CheckEmailExists(user.Email)
+	exists, _ := auth.CheckEmailExists(user.Email)
 	if exists {
 		c.JSON(http.StatusConflict, gin.H{
 			"success": false,
@@ -39,7 +34,7 @@ func Signup(c *gin.Context) {
 		return
 	}
 
-	verificationToken, success := auth_service.CreateUser(user.Email, user.FirstName, user.LastName, user.Password)
+	verificationToken, success := auth.CreateUser(user.Email, user.FirstName, user.LastName, user.Password)
 	if !success {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -48,7 +43,7 @@ func Signup(c *gin.Context) {
 	}
 
 	// Send verification email
-	err := auth_service.SendEmailTo(user.Email, verificationToken)
+	err := auth.SendEmailTo(user.Email, verificationToken)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -62,7 +57,7 @@ func Signup(c *gin.Context) {
 }
 
 func Login(c *gin.Context) {
-	var user auth_model.UserLoginForm
+	var user UserLoginForm
 
 	if err := c.ShouldBindJSON(&user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -71,7 +66,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	exists, _ := auth_service.CheckEmailExists(user.Email)
+	exists, _ := auth.CheckEmailExists(user.Email)
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
@@ -79,7 +74,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	userProfile, err := auth_service.GetUserProfileByEmail(user.Email)
+	userProfile, err := auth.GetUserProfileByEmail(user.Email)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -88,7 +83,7 @@ func Login(c *gin.Context) {
 	}
 
 	// Check if the password is correct
-	isValidPassword := auth_service.IsValidPassword(userProfile.Password, user.Password)
+	isValidPassword := auth.IsValidPassword(userProfile.Password, user.Password)
 	if !isValidPassword {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
@@ -105,7 +100,7 @@ func Login(c *gin.Context) {
 	}
 
 	parts := strings.Split(userProfile.PK, "#")
-	tokenString, expirationTime, err := auth_service.GenerateJWT(secretKey, user.Email, parts[1])
+	tokenString, expirationTime, err := auth.GenerateJWT(secretKey, user.Email, parts[1])
 
 	// Set the jwt token in a cookie
 	http.SetCookie(c.Writer, &http.Cookie{
@@ -138,7 +133,7 @@ func ValidateToken(c *gin.Context) {
 
 	tokenString := parts[1]
 
-	token, err := jwt.ParseWithClaims(tokenString, &auth_model.Claims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
@@ -152,7 +147,7 @@ func ValidateToken(c *gin.Context) {
 		return
 	}
 
-	claims, ok := token.Claims.(*auth_model.Claims)
+	claims, ok := token.Claims.(*Claims)
 	if !ok || !token.Valid {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
@@ -179,7 +174,7 @@ func ResendVerificationEmail(c *gin.Context) {
 		return
 	}
 
-	userProfile, err := auth_service.GetUserProfileByEmail(email)
+	userProfile, err := auth.GetUserProfileByEmail(email)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -188,7 +183,7 @@ func ResendVerificationEmail(c *gin.Context) {
 	}
 	userId := userProfile.PK
 
-	verificationToken, _, err := auth_service.UpdateVerificationToken(userId)
+	verificationToken, _, err := auth.UpdateVerificationToken(userId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -196,7 +191,7 @@ func ResendVerificationEmail(c *gin.Context) {
 		return
 	}
 
-	err = auth_service.SendEmailTo(email, verificationToken)
+	err = auth.SendEmailTo(email, verificationToken)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -217,7 +212,7 @@ func VerifyEmail(c *gin.Context) {
 		return
 	}
 
-	userProfile, err := auth_service.GetUserProfileByEmail(email)
+	userProfile, err := auth.GetUserProfileByEmail(email)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -251,7 +246,7 @@ func VerifyEmail(c *gin.Context) {
 	}
 
 	// Update the user profile to set isVerified to true
-	err = auth_service.VerifyUserEmail(userProfile.PK)
+	err = auth.VerifyUserEmail(userProfile.PK)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

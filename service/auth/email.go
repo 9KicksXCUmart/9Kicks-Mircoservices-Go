@@ -1,4 +1,4 @@
-package auth_service
+package auth
 
 import (
 	"9Kicks/config"

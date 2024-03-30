@@ -1,8 +1,8 @@
-package auth_service
+package auth
 
 import (
 	"9Kicks/dao"
-	"9Kicks/model/auth_model"
+	"9Kicks/model/auth"
 	"log"
 	"time"
 
@@ -20,7 +20,7 @@ func CheckEmailExists(email string) (bool, error) {
 	return len(userProfiles) > 0, nil
 }
 
-func GetUserProfileByEmail(email string) (auth_model.UserProfile, error) {
+func GetUserProfileByEmail(email string) (auth.UserProfile, error) {
 	userProfiles, err := dao.GetUserProfileByEmail(email)
 	if err != nil {
 		return userProfiles[0], err
@@ -39,7 +39,7 @@ func CreateUser(email, firstName, lastName, password string) (token string, succ
 	verificationToken, tokenExpirationTime := generateVerificationToken()
 
 	// Construct the user profile item to be stored in DynamoDB
-	userProfile := auth_model.UserProfile{
+	userProfile := auth.UserProfile{
 		PK:                "USER#" + uuid.New().String(),
 		SK:                "USER_PROFILE",
 		Email:             email,
@@ -61,7 +61,7 @@ func IsValidPassword(hashedPassword, password string) bool {
 func GenerateJWT(secretKey, email, userID string) (string, time.Time, error) {
 	// Set jwt token expiration to be 1 hour
 	expirationTime := time.Now().Add(time.Hour)
-	claims := &auth_model.Claims{
+	claims := &auth.Claims{
 		Email:  email,
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{

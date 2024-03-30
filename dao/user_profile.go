@@ -2,7 +2,7 @@ package dao
 
 import (
 	"9Kicks/config"
-	"9Kicks/model/auth_model"
+	"9Kicks/model/auth"
 	"9Kicks/util"
 	"context"
 	"os"
@@ -20,8 +20,8 @@ var (
 	emailIndexName = "User-email-index"
 )
 
-func GetUserProfileByEmail(email string) ([]auth_model.UserProfile, error) {
-	var userProfiles []auth_model.UserProfile
+func GetUserProfileByEmail(email string) ([]auth.UserProfile, error) {
+	var userProfiles []auth.UserProfile
 
 	queryParams := &dynamodb.QueryInput{
 		TableName:              aws.String(tableName),
@@ -40,7 +40,7 @@ func GetUserProfileByEmail(email string) ([]auth_model.UserProfile, error) {
 		return userProfiles, err
 	}
 	for _, item := range result.Items {
-		var userProfile auth_model.UserProfile
+		var userProfile auth.UserProfile
 		err := attributevalue.UnmarshalMap(item, &userProfile)
 		if err != nil {
 			return userProfiles, err
@@ -51,7 +51,7 @@ func GetUserProfileByEmail(email string) ([]auth_model.UserProfile, error) {
 	return userProfiles, nil
 }
 
-func AddNewUserProfile(userProfile auth_model.UserProfile) (success bool) {
+func AddNewUserProfile(userProfile auth.UserProfile) (success bool) {
 	// Convert the struct to dynamodb.AttributeValue
 	profileItem, err := util.StructToAttributeValue(userProfile)
 	if err != nil {
