@@ -2,155 +2,107 @@ package controller
 
 import (
 	"9Kicks/config"
-	"9Kicks/model/auth"
-	"9Kicks/util"
-	"context"
+	. "9Kicks/model/auth"
+	"9Kicks/service/auth"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var (
-	jwtKey         = []byte(config.GetJWTSecrets().JWTUserSecret)
-	dynamoDBClient = config.GetDynamoDBClient()
-	tableName      = "9Kicks-test"
-	gsiName        = "User-email-index"
+	secretKey = config.GetJWTSecrets().JWTUserSecret
 )
 
 func Signup(c *gin.Context) {
-	var user auth.UserSignUpForm
+	var user UserSignUpForm
 	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error()})
 		return
 	}
 
-	// Check if the email already exists
-	queryParams := &dynamodb.QueryInput{
-		TableName:              aws.String(tableName),
-		IndexName:              aws.String("User-email-index"),
-		KeyConditionExpression: aws.String("#pk = :email"),
-		ExpressionAttributeNames: map[string]string{
-			"#pk": "email",
-		},
-		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":email": &types.AttributeValueMemberS{Value: user.Email},
-		},
+	exists, _ := auth.CheckEmailExists(user.Email)
+	if exists {
+		c.JSON(http.StatusConflict, gin.H{
+			"success": false,
+			"message": "Email already exists"})
+		return
 	}
 
-	result, err := dynamoDBClient.Query(context.TODO(), queryParams)
+	verificationToken, success := auth.CreateUser(user.Email, user.FirstName, user.LastName, user.Password)
+	if !success {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to create user"})
+		return
+	}
+
+	// Send verification email
+	err := auth.SendEmailTo(user.Email, verificationToken)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check email"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to send verification email"})
 		return
 	}
 
-	if len(result.Items) > 0 {
-		c.JSON(http.StatusConflict, gin.H{"error": "Email already exists"})
-		return
-	}
-
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
-		return
-	}
-
-	userProfile := auth.UserProfile{
-		PK:        "USER#" + uuid.New().String(),
-		SK:        "USER_PROFILE",
-		Email:     user.Email,
-		Password:  string(hashedPassword),
-		FirstName: user.FirstName,
-		LastName:  user.LastName,
-	}
-
-	profileItem, err := util.StructToAttributeValue(userProfile)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to convert struct to attribute value"})
-		return
-	}
-
-	putParams := &dynamodb.PutItemInput{
-		TableName: aws.String(tableName),
-		Item:      profileItem,
-	}
-
-	_, err = dynamoDBClient.PutItem(context.TODO(), putParams)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "User created successfully"})
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "A verification email has been sent to your email address. Please verify your email to complete registration"})
 }
 
 func Login(c *gin.Context) {
-	var user auth.UserLoginForm
-	fmt.Println("DLLM")
+	var user UserLoginForm
+
 	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error()})
 		return
 	}
 
-	IndexPartitionKeyName := "email"
-
-	input := &dynamodb.QueryInput{
-		TableName:              aws.String(tableName),
-		IndexName:              aws.String(gsiName),
-		KeyConditionExpression: aws.String("#pk = :email"),
-		ExpressionAttributeNames: map[string]string{
-			"#pk": IndexPartitionKeyName,
-		},
-		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":email": &types.AttributeValueMemberS{Value: user.Email},
-		},
+	exists, _ := auth.CheckEmailExists(user.Email)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "This email is not registered"})
+		return
 	}
 
-	result, err := dynamoDBClient.Query(context.TODO(), input)
+	userProfile, err := auth.GetUserProfileByEmail(user.Email)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to retrieve user profile"})
 		return
 	}
 
-	if len(result.Items) == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
+	// Check if the password is correct
+	isValidPassword := auth.IsValidPassword(userProfile.Password, user.Password)
+	if !isValidPassword {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Wrong password"})
 		return
 	}
 
-	item := result.Items[0]
-
-	storedPassword := item["password"].(*types.AttributeValueMemberS).Value
-
-	err = bcrypt.CompareHashAndPassword([]byte(storedPassword), []byte(user.Password))
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
+	// Check if the email is verified
+	if !userProfile.IsVerified {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Email not verified"})
 		return
 	}
 
-	// Set token expiration to be 1 hour
-	expirationTime := time.Now().Add(time.Hour)
-	claims := &auth.Claims{
-		Email: user.Email,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(expirationTime),
-		},
-	}
+	parts := strings.Split(userProfile.PK, "#")
+	tokenString, expirationTime, err := auth.GenerateJWT(secretKey, user.Email, parts[1])
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(jwtKey)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
-		return
-	}
-
+	// Set the jwt token in a cookie
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     "jwt",
 		Value:    tokenString,
@@ -159,7 +111,9 @@ func Login(c *gin.Context) {
 		SameSite: http.SameSiteStrictMode, // Set SameSite policy to Strict
 	})
 
-	c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Login successful"})
 }
 
 func ValidateToken(c *gin.Context) {
@@ -171,29 +125,136 @@ func ValidateToken(c *gin.Context) {
 
 	parts := strings.Split(authHeader, " ")
 	if len(parts) != 2 || parts[0] != "Bearer" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Authorization header format"})
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Invalid Authorization header format"})
 		return
 	}
 
 	tokenString := parts[1]
 
-	token, err := jwt.ParseWithClaims(tokenString, &auth.Claims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return jwtKey, nil
+		return []byte(secretKey), nil
 	})
 
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Invalid token"})
 		return
 	}
 
-	claims, ok := token.Claims.(*auth.Claims)
+	claims, ok := token.Claims.(*Claims)
 	if !ok || !token.Valid {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Invalid token"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"email": claims.Email})
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Token is valid",
+		"data": gin.H{
+			"email":   claims.Email,
+			"user_id": claims.UserID,
+		},
+	})
+}
+
+func ResendVerificationEmail(c *gin.Context) {
+	email := c.Query("email")
+	if email == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Missing email"})
+		return
+	}
+
+	userProfile, err := auth.GetUserProfileByEmail(email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to retrieve user profile"})
+		return
+	}
+	userId := userProfile.PK
+
+	verificationToken, _, err := auth.UpdateVerificationToken(userId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to update verification token"})
+		return
+	}
+
+	err = auth.SendEmailTo(email, verificationToken)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to send verification email"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "A verification email has been sent to your email address. Please verify your email to complete registration"})
+}
+
+func VerifyEmail(c *gin.Context) {
+	// Get the verification token and email from the request parameters
+	token := c.Query("token")
+	email := c.Query("email")
+	if token == "" || email == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing token or email"})
+		return
+	}
+
+	userProfile, err := auth.GetUserProfileByEmail(email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to retrieve user profile"})
+		return
+	}
+
+	if userProfile.IsVerified {
+		c.JSON(http.StatusConflict, gin.H{
+			"success": false,
+			"message": "Email already verified"})
+		return
+	}
+
+	storedToken := userProfile.VerificationToken
+	tokenExpirationTime := userProfile.TokenExpiry
+
+	if storedToken != token {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Invalid verification token"})
+		return
+	}
+
+	// Check if the token has expired
+	if time.Now().Unix() > tokenExpirationTime {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Verification token has expired"})
+		return
+	}
+
+	// Update the user profile to set isVerified to true
+	err = auth.VerifyUserEmail(userProfile.PK)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to update user profile"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Email verified successfully"})
 }
