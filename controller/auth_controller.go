@@ -4,11 +4,11 @@ import (
 	"9Kicks/config"
 	"9Kicks/model/auth_model"
 	"9Kicks/service/auth_service"
-	"9Kicks/util"
 	"context"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -25,7 +25,7 @@ import (
 var (
 	jwtKey                = []byte(config.GetJWTSecrets().JWTUserSecret)
 	dynamoDBClient        = config.GetDynamoDBClient()
-	tableName             = "9Kicks-test"
+	tableName             = os.Getenv("DB_TABLE_NAME")
 	gsiName               = "User-email-index"
 	indexPartitionKeyName = "email"
 )
@@ -37,75 +37,20 @@ func Signup(c *gin.Context) {
 		return
 	}
 
-	// Check if the email already exists
-	queryParams := &dynamodb.QueryInput{
-		TableName:              aws.String(tableName),
-		IndexName:              aws.String("User-email-index"),
-		KeyConditionExpression: aws.String("#pk = :email"),
-		ExpressionAttributeNames: map[string]string{
-			"#pk": "email",
-		},
-		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":email": &types.AttributeValueMemberS{Value: user.Email},
-		},
-	}
-
-	result, err := dynamoDBClient.Query(context.TODO(), queryParams)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check email"})
-		return
-	}
-
-	if len(result.Items) > 0 {
+	exists, _ := auth_service.CheckEmailExists(user.Email)
+	if exists {
 		c.JSON(http.StatusConflict, gin.H{"error": "Email already exists"})
 		return
 	}
 
-	// Hash the input password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
-		return
-	}
-
-	// Generate verification token for email verification
-	verificationToken := uuid.New().String()
-	// Set verification token expiry to be 5 minutes
-	tokenExpirationTime := time.Now().Add(time.Minute * 5).Unix()
-
-	// Construct the user profile item to be stored in DynamoDB
-	userProfile := auth_model.UserProfile{
-		PK:                "USER#" + uuid.New().String(),
-		SK:                "USER_PROFILE",
-		Email:             user.Email,
-		Password:          string(hashedPassword),
-		FirstName:         user.FirstName,
-		LastName:          user.LastName,
-		VerificationToken: verificationToken,
-		TokenExpiry:       tokenExpirationTime,
-	}
-
-	// Convert the struct to dynamodb.AttributeValue
-	profileItem, err := util.StructToAttributeValue(userProfile)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to convert struct to attribute value"})
-		return
-	}
-
-	// Put the user profile item into DynamoDB
-	putParams := &dynamodb.PutItemInput{
-		TableName: aws.String(tableName),
-		Item:      profileItem,
-	}
-
-	_, err = dynamoDBClient.PutItem(context.TODO(), putParams)
-	if err != nil {
+	verificationToken, success := auth_service.CreateUser(user.Email, user.FirstName, user.LastName, user.Password)
+	if !success {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
 		return
 	}
 
 	// Send verification email
-	err = auth_service.SendEmailTo(user.Email, verificationToken)
+	err := auth_service.SendEmailTo(user.Email, verificationToken)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send verification email"})
 		return

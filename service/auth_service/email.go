@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-func GetAccessToken() (string, string) {
+func getAccessToken() (string, string) {
 	baseUrl := "https://accounts.zoho.jp/oauth/v2/token?"
 	url := baseUrl + config.GetTokenParams().ZOHOTokenParams
 	accountNo := config.GetTokenParams().ZOHOAccountNo
@@ -46,7 +46,7 @@ func GetAccessToken() (string, string) {
 }
 
 func SendEmailTo(email, token string) error {
-	accessToken, accountNo := GetAccessToken()
+	accessToken, accountNo := getAccessToken()
 	requestUrl := "https://mail.zoho.jp/api/accounts/" + accountNo + "/messages"
 	method := "POST"
 
