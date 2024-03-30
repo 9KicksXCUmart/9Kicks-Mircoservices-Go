@@ -2,10 +2,12 @@ package controller
 
 import (
 	"9Kicks/config"
-	"9Kicks/model/auth"
+	"9Kicks/model/auth_model"
+	"9Kicks/service/auth_service"
 	"9Kicks/util"
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -29,7 +31,7 @@ var (
 )
 
 func Signup(c *gin.Context) {
-	var user auth.UserSignUpForm
+	var user auth_model.UserSignUpForm
 	if err := c.ShouldBindJSON(&user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -68,10 +70,11 @@ func Signup(c *gin.Context) {
 
 	// Generate verification token for email verification
 	verificationToken := uuid.New().String()
+	// Set verification token expiry to be 5 minutes
 	tokenExpirationTime := time.Now().Add(time.Minute * 5).Unix()
 
 	// Construct the user profile item to be stored in DynamoDB
-	userProfile := auth.UserProfile{
+	userProfile := auth_model.UserProfile{
 		PK:                "USER#" + uuid.New().String(),
 		SK:                "USER_PROFILE",
 		Email:             user.Email,
@@ -101,11 +104,18 @@ func Signup(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "User created successfully"})
+	// Send verification email
+	err = auth_service.SendEmailTo(user.Email, verificationToken)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send verification email"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "A verification email has been sent to your email address. Please verify your email to complete registration"})
 }
 
 func Login(c *gin.Context) {
-	var user auth.UserLoginForm
+	var user auth_model.UserLoginForm
 
 	if err := c.ShouldBindJSON(&user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -156,7 +166,7 @@ func Login(c *gin.Context) {
 
 	// Set jwt token expiration to be 1 hour
 	expirationTime := time.Now().Add(time.Hour)
-	claims := &auth.Claims{
+	claims := &auth_model.Claims{
 		Email: user.Email,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
@@ -197,7 +207,7 @@ func ValidateToken(c *gin.Context) {
 
 	tokenString := parts[1]
 
-	token, err := jwt.ParseWithClaims(tokenString, &auth.Claims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &auth_model.Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
@@ -209,13 +219,84 @@ func ValidateToken(c *gin.Context) {
 		return
 	}
 
-	claims, ok := token.Claims.(*auth.Claims)
+	claims, ok := token.Claims.(*auth_model.Claims)
 	if !ok || !token.Valid {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"email": claims.Email})
+}
+
+func ResendVerificationEmail(c *gin.Context) {
+	email := c.Query("email")
+	if email == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing token or email"})
+		return
+	}
+	// Generate verification token for email verification
+	verificationToken := uuid.New().String()
+	// Set verification token expiry to be 5 minutes
+
+	// TODO: Update token expiry time
+	tokenExpirationTime := time.Now().Add(time.Minute * 5).Unix()
+
+	queryParams := &dynamodb.QueryInput{
+		TableName:              aws.String(tableName),
+		IndexName:              aws.String("User-email-index"),
+		KeyConditionExpression: aws.String("#pk = :email"),
+		ExpressionAttributeNames: map[string]string{
+			"#pk": "email",
+		},
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":email": &types.AttributeValueMemberS{Value: email},
+		},
+	}
+
+	result, err := dynamoDBClient.Query(context.TODO(), queryParams)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check email"})
+		return
+	}
+
+	userId := result.Items[0]["PK"].(*types.AttributeValueMemberS).Value
+
+	// Define the expression attribute names and values
+	expr := aws.String("SET #verificationToken = :verificationToken, #tokenExpiry = :tokenExpiry")
+	exprNames := map[string]string{
+		"#verificationToken": "verificationToken",
+		"#tokenExpiry":       "tokenExpiry",
+	}
+	exprValues := map[string]types.AttributeValue{
+		":verificationToken": &types.AttributeValueMemberS{Value: verificationToken},
+		":tokenExpiry":       &types.AttributeValueMemberN{Value: strconv.FormatInt(tokenExpirationTime, 10)},
+	}
+
+	// Construct the UpdateItemInput
+	updateInput := &dynamodb.UpdateItemInput{
+		TableName: aws.String(tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: userId},
+			"SK": &types.AttributeValueMemberS{Value: "USER_PROFILE"},
+		},
+		UpdateExpression:          expr,
+		ExpressionAttributeNames:  exprNames,
+		ExpressionAttributeValues: exprValues,
+	}
+
+	_, err = dynamoDBClient.UpdateItem(context.TODO(), updateInput)
+	if err != nil {
+		log.Println(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update verification token"})
+		return
+	}
+
+	err = auth_service.SendEmailTo(email, verificationToken)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send verification email"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "A verification email has been sent to your email address. Please verify your email to complete registration"})
 }
 
 func VerifyEmail(c *gin.Context) {

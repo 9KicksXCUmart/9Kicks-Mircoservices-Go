@@ -1,4 +1,4 @@
-package auth
+package auth_model
 
 type UserSignUpForm struct {
 	Email     string `json:"email"`

@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"9Kicks/model/auth"
+	"9Kicks/model/auth_model"
 	"errors"
 	"net/http"
 
@@ -19,7 +19,7 @@ func authMiddleware() gin.HandlerFunc {
 
 		tokenString := cookie.Value
 
-		token, err := jwt.ParseWithClaims(tokenString, &auth.Claims{}, func(token *jwt.Token) (interface{}, error) {
+		token, err := jwt.ParseWithClaims(tokenString, &auth_model.Claims{}, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, errors.New("unexpected signing method")
 			}
@@ -31,7 +31,7 @@ func authMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		claims, ok := token.Claims.(*auth.Claims)
+		claims, ok := token.Claims.(*auth_model.Claims)
 		if !ok || !token.Valid {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return

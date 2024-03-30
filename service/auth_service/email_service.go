@@ -1,4 +1,4 @@
-package auth
+package auth_service
 
 import (
 	"9Kicks/config"
@@ -45,7 +45,7 @@ func GetAccessToken() (string, string) {
 	return fmt.Sprintf("%s", token), accountNo
 }
 
-func SendEmailTo(email, token string) {
+func SendEmailTo(email, token string) error {
 	accessToken, accountNo := GetAccessToken()
 	requestUrl := "https://mail.zoho.jp/api/accounts/" + accountNo + "/messages"
 	method := "POST"
@@ -55,7 +55,7 @@ func SendEmailTo(email, token string) {
 	tmpl, err := template.ParseFiles(templatePath)
 	if err != nil {
 		log.Fatal(err)
-		return
+		return err
 	}
 
 	data := struct {
@@ -71,7 +71,7 @@ func SendEmailTo(email, token string) {
 	err = tmpl.Execute(&emailBody, data)
 	if err != nil {
 		log.Fatal(err)
-		return
+		return err
 	}
 
 	type EmailContent struct {
@@ -103,21 +103,24 @@ func SendEmailTo(email, token string) {
 
 	if err != nil {
 		log.Fatal(err)
-		return
+		return err
 	}
 	req.Header.Add("Authorization", "Zoho-oauthtoken "+accessToken)
 
 	res, err := client.Do(req)
 	if err != nil {
 		log.Fatal(err)
-		return
+		return err
 	}
 	defer res.Body.Close()
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		log.Fatal(err)
-		return
+		return err
 	}
-	log.Println(string(body))
+
+	log.Println(body)
+
+	return nil
 }
