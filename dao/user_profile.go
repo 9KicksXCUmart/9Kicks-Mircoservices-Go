@@ -6,6 +6,7 @@ import (
 	"9Kicks/util"
 	"context"
 	"os"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
@@ -16,6 +17,7 @@ import (
 var (
 	dynamoDBClient = config.GetDynamoDBClient()
 	tableName      = os.Getenv("DB_TABLE_NAME")
+	emailIndexName = "User-email-index"
 )
 
 func GetUserProfileByEmail(email string) ([]auth_model.UserProfile, error) {
@@ -23,7 +25,7 @@ func GetUserProfileByEmail(email string) ([]auth_model.UserProfile, error) {
 
 	queryParams := &dynamodb.QueryInput{
 		TableName:              aws.String(tableName),
-		IndexName:              aws.String("User-email-index"),
+		IndexName:              aws.String(emailIndexName),
 		KeyConditionExpression: aws.String("#pk = :email"),
 		ExpressionAttributeNames: map[string]string{
 			"#pk": "email",
@@ -68,4 +70,59 @@ func AddNewUserProfile(userProfile auth_model.UserProfile) (success bool) {
 	}
 
 	return true
+}
+
+func UpdateVerificationToken(userId, verificationToken string, tokenExpirationTime int64) error {
+	expr := aws.String("SET #verificationToken = :verificationToken, #tokenExpiry = :tokenExpiry")
+	exprNames := map[string]string{
+		"#verificationToken": "verificationToken",
+		"#tokenExpiry":       "tokenExpiry",
+	}
+	exprValues := map[string]types.AttributeValue{
+		":verificationToken": &types.AttributeValueMemberS{Value: verificationToken},
+		":tokenExpiry":       &types.AttributeValueMemberN{Value: strconv.FormatInt(tokenExpirationTime, 10)},
+	}
+
+	// Construct the UpdateItemInput
+	updateInput := &dynamodb.UpdateItemInput{
+		TableName: aws.String(tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: userId},
+			"SK": &types.AttributeValueMemberS{Value: "USER_PROFILE"},
+		},
+		UpdateExpression:          expr,
+		ExpressionAttributeNames:  exprNames,
+		ExpressionAttributeValues: exprValues,
+	}
+
+	_, err := dynamoDBClient.UpdateItem(context.TODO(), updateInput)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func VerifyUserEmail(userId string) error {
+	updateParams := &dynamodb.UpdateItemInput{
+		TableName: aws.String(tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: userId},
+			"SK": &types.AttributeValueMemberS{Value: "USER_PROFILE"},
+		},
+		UpdateExpression: aws.String("SET #isVerified = :isVerified"),
+		ExpressionAttributeNames: map[string]string{
+			"#isVerified": "isVerified",
+		},
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":isVerified": &types.AttributeValueMemberBOOL{Value: true},
+		},
+	}
+
+	_, err := dynamoDBClient.UpdateItem(context.TODO(), updateParams)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

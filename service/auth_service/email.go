@@ -114,13 +114,11 @@ func SendEmailTo(email, token string) error {
 	}
 	defer res.Body.Close()
 
-	body, err := ioutil.ReadAll(res.Body)
+	_, err = ioutil.ReadAll(res.Body)
 	if err != nil {
 		log.Fatal(err)
 		return err
 	}
-
-	log.Println(body)
 
 	return nil
 }

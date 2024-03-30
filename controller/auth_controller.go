@@ -4,25 +4,17 @@ import (
 	"9Kicks/config"
 	"9Kicks/model/auth_model"
 	"9Kicks/service/auth_service"
-	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 )
 
 var (
-	jwtKey                = []byte(config.GetJWTSecrets().JWTUserSecret)
 	secretKey             = config.GetJWTSecrets().JWTUserSecret
 	dynamoDBClient        = config.GetDynamoDBClient()
 	tableName             = os.Getenv("DB_TABLE_NAME")
@@ -150,7 +142,7 @@ func ValidateToken(c *gin.Context) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return jwtKey, nil
+		return []byte(secretKey), nil
 	})
 
 	if err != nil {
@@ -181,72 +173,39 @@ func ValidateToken(c *gin.Context) {
 func ResendVerificationEmail(c *gin.Context) {
 	email := c.Query("email")
 	if email == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing token or email"})
-		return
-	}
-	// Generate verification token for email verification
-	verificationToken := uuid.New().String()
-	// Set verification token expiry to be 5 minutes
-
-	// TODO: Update token expiry time
-	tokenExpirationTime := time.Now().Add(time.Minute * 5).Unix()
-
-	queryParams := &dynamodb.QueryInput{
-		TableName:              aws.String(tableName),
-		IndexName:              aws.String("User-email-index"),
-		KeyConditionExpression: aws.String("#pk = :email"),
-		ExpressionAttributeNames: map[string]string{
-			"#pk": "email",
-		},
-		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":email": &types.AttributeValueMemberS{Value: email},
-		},
-	}
-
-	result, err := dynamoDBClient.Query(context.TODO(), queryParams)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check email"})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Missing email"})
 		return
 	}
 
-	userId := result.Items[0]["PK"].(*types.AttributeValueMemberS).Value
-
-	// Define the expression attribute names and values
-	expr := aws.String("SET #verificationToken = :verificationToken, #tokenExpiry = :tokenExpiry")
-	exprNames := map[string]string{
-		"#verificationToken": "verificationToken",
-		"#tokenExpiry":       "tokenExpiry",
-	}
-	exprValues := map[string]types.AttributeValue{
-		":verificationToken": &types.AttributeValueMemberS{Value: verificationToken},
-		":tokenExpiry":       &types.AttributeValueMemberN{Value: strconv.FormatInt(tokenExpirationTime, 10)},
-	}
-
-	// Construct the UpdateItemInput
-	updateInput := &dynamodb.UpdateItemInput{
-		TableName: aws.String(tableName),
-		Key: map[string]types.AttributeValue{
-			"PK": &types.AttributeValueMemberS{Value: userId},
-			"SK": &types.AttributeValueMemberS{Value: "USER_PROFILE"},
-		},
-		UpdateExpression:          expr,
-		ExpressionAttributeNames:  exprNames,
-		ExpressionAttributeValues: exprValues,
-	}
-
-	_, err = dynamoDBClient.UpdateItem(context.TODO(), updateInput)
+	userProfile, err := auth_service.GetUserProfileByEmail(email)
 	if err != nil {
-		log.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update verification token"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to retrieve user profile"})
+		return
+	}
+	userId := userProfile.PK
+
+	verificationToken, _, err := auth_service.UpdateVerificationToken(userId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to update verification token"})
 		return
 	}
 
 	err = auth_service.SendEmailTo(email, verificationToken)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send verification email"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to send verification email"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "A verification email has been sent to your email address. Please verify your email to complete registration"})
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "A verification email has been sent to your email address. Please verify your email to complete registration"})
 }
 
 func VerifyEmail(c *gin.Context) {
@@ -258,72 +217,49 @@ func VerifyEmail(c *gin.Context) {
 		return
 	}
 
-	// Check if the token and email match the stored values in your database
-	input := &dynamodb.QueryInput{
-		TableName:              aws.String(tableName),
-		IndexName:              aws.String(gsiName),
-		KeyConditionExpression: aws.String("#pk = :email"),
-		ExpressionAttributeNames: map[string]string{
-			"#pk": indexPartitionKeyName,
-		},
-		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":email": &types.AttributeValueMemberS{Value: email},
-		},
-	}
-
-	result, err := dynamoDBClient.Query(context.TODO(), input)
+	userProfile, err := auth_service.GetUserProfileByEmail(email)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check email"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to retrieve user profile"})
 		return
 	}
 
-	if len(result.Items) == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Email does not exist"})
+	if userProfile.IsVerified {
+		c.JSON(http.StatusConflict, gin.H{
+			"success": false,
+			"message": "Email already verified"})
 		return
 	}
 
-	item := result.Items[0]
-	isVerified := item["isVerified"].(*types.AttributeValueMemberBOOL).Value
-	if isVerified {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Email already verified"})
-		return
-	}
-
-	storedToken := item["verificationToken"].(*types.AttributeValueMemberS).Value
-	tokenExpirationTime, _ := strconv.ParseInt(item["tokenExpiry"].(*types.AttributeValueMemberN).Value, 10, 64)
-	fmt.Println(tokenExpirationTime)
+	storedToken := userProfile.VerificationToken
+	tokenExpirationTime := userProfile.TokenExpiry
 
 	if storedToken != token {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid verification token"})
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Invalid verification token"})
 		return
 	}
 
 	// Check if the token has expired
 	if time.Now().Unix() > tokenExpirationTime {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Verification token has expired"})
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Verification token has expired"})
 		return
 	}
 
-	// Update the user profile item in DynamoDB to mark the user as verified
-	updateParams := &dynamodb.UpdateItemInput{
-		TableName: aws.String(tableName),
-		Key: map[string]types.AttributeValue{
-			"PK": &types.AttributeValueMemberS{Value: item["PK"].(*types.AttributeValueMemberS).Value},
-			"SK": &types.AttributeValueMemberS{Value: item["SK"].(*types.AttributeValueMemberS).Value},
-		},
-		UpdateExpression: aws.String("SET #isVerified = :isVerified"),
-		ExpressionAttributeNames: map[string]string{
-			"#isVerified": "isVerified",
-		},
-		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":isVerified": &types.AttributeValueMemberBOOL{Value: true},
-		},
-	}
-
-	_, err = dynamoDBClient.UpdateItem(context.TODO(), updateParams)
+	// Update the user profile to set isVerified to true
+	err = auth_service.VerifyUserEmail(userProfile.PK)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to verify email"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to update user profile"})
+		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Email verified successfully"})
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Email verified successfully"})
 }

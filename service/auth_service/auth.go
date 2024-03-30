@@ -78,9 +78,23 @@ func GenerateJWT(secretKey, email, userID string) (string, time.Time, error) {
 	return tokenString, expirationTime, nil
 }
 
+func UpdateVerificationToken(userId string) (string, int64, error) {
+	verificationToken, tokenExpirationTime := generateVerificationToken()
+	err := dao.UpdateVerificationToken(userId, verificationToken, tokenExpirationTime)
+	if err != nil {
+		return "", 0, err
+	}
+
+	return verificationToken, tokenExpirationTime, nil
+}
+
 func generateVerificationToken() (string, int64) {
 	// Set verification token expiry to be 5 minutes
 	tokenExpirationTime := time.Now().Add(time.Minute * 5).Unix()
 	verificationToken := uuid.New().String()
 	return verificationToken, tokenExpirationTime
+}
+
+func VerifyUserEmail(userId string) error {
+	return dao.VerifyUserEmail(userId)
 }
