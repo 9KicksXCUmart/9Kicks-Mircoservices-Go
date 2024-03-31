@@ -205,8 +205,15 @@ func ResendVerificationEmail(c *gin.Context) {
 
 func VerifyEmail(c *gin.Context) {
 	// Get the verification token and email from the request parameters
-	token := c.Query("token")
-	email := c.Query("email")
+	var form EmailVerificationForm
+	if err := c.ShouldBindJSON(&form); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error()})
+		return
+	}
+	token := form.Token
+	email := form.Email
 	if token == "" || email == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing token or email"})
 		return
