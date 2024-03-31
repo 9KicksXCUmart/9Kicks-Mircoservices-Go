@@ -89,7 +89,7 @@ func UpdateVerificationToken(userId string) (string, int64, error) {
 }
 
 func generateVerificationToken() (string, int64) {
-	// Set verification token expiry to be 5 minutes
+	// Set verification token expiry to be 30 minutes
 	tokenExpirationTime := time.Now().Add(time.Minute * 30).Unix()
 	verificationToken := uuid.New().String()
 	return verificationToken, tokenExpirationTime
