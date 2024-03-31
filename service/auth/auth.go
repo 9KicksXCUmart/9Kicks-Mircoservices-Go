@@ -90,11 +90,41 @@ func UpdateVerificationToken(userId string) (string, int64, error) {
 
 func generateVerificationToken() (string, int64) {
 	// Set verification token expiry to be 5 minutes
-	tokenExpirationTime := time.Now().Add(time.Minute * 5).Unix()
+	tokenExpirationTime := time.Now().Add(time.Minute * 30).Unix()
 	verificationToken := uuid.New().String()
 	return verificationToken, tokenExpirationTime
 }
 
 func VerifyUserEmail(userId string) error {
 	return dao.VerifyUserEmail(userId)
+}
+
+func HashPassword(password string) (string, bool) {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Fatal(err)
+		return "", false
+	}
+	return string(hashedPassword), true
+}
+
+func UpdatePassword(userId, password string) bool {
+	hashedPassword, success := HashPassword(password)
+	if !success {
+		return false
+	}
+
+	err := dao.UpdatePassword(userId, hashedPassword)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
+func SendResetPasswordEmail(email, name, token string) bool {
+	err := SendResetEmailTo(email, token, name)
+	if err != nil {
+		return false
+	}
+	return true
 }
