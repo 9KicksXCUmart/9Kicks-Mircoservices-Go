@@ -25,3 +25,9 @@ type UserProfile struct {
 	VerificationToken string            `dynamodbav:"verificationToken"`
 	TokenExpiry       int64             `dynamodbav:"tokenExpiry"`
 }
+
+type ResetPasswordForm struct {
+	NewPassword string `json:"newPassword"`
+	Email       string `json:"email"`
+	Token       string `json:"token"`
+}
