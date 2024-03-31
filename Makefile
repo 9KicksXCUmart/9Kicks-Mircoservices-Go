@@ -10,9 +10,7 @@ vet: fmt
 build: vet
 	air
 
-clean:
-	rm -f hello_world
-
 setup:
+	git config core.hooksPath .githooks
 	go mod download
 	go install github.com/cosmtrek/air@latest
