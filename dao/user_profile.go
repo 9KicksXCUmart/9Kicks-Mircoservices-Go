@@ -126,3 +126,32 @@ func VerifyUserEmail(userId string) error {
 
 	return nil
 }
+
+func UpdatePassword(userId, password string) error {
+	expr := aws.String("SET #password = :password")
+	exprNames := map[string]string{
+		"#password": "password",
+	}
+	exprValues := map[string]types.AttributeValue{
+		":password": &types.AttributeValueMemberS{Value: password},
+	}
+
+	// Construct the UpdateItemInput
+	updateInput := &dynamodb.UpdateItemInput{
+		TableName: aws.String(tableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: userId},
+			"SK": &types.AttributeValueMemberS{Value: "USER_PROFILE"},
+		},
+		UpdateExpression:          expr,
+		ExpressionAttributeNames:  exprNames,
+		ExpressionAttributeValues: exprValues,
+	}
+
+	_, err := dynamoDBClient.UpdateItem(context.TODO(), updateInput)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

@@ -205,8 +205,15 @@ func ResendVerificationEmail(c *gin.Context) {
 
 func VerifyEmail(c *gin.Context) {
 	// Get the verification token and email from the request parameters
-	token := c.Query("token")
-	email := c.Query("email")
+	var form EmailVerificationForm
+	if err := c.ShouldBindJSON(&form); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error()})
+		return
+	}
+	token := form.Token
+	email := form.Email
 	if token == "" || email == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing token or email"})
 		return
@@ -257,4 +264,98 @@ func VerifyEmail(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Email verified successfully"})
+}
+
+func ForgotPassword(c *gin.Context) {
+	email := c.Query("email")
+	exists, _ := auth.CheckEmailExists(email)
+	if !exists {
+		c.JSON(http.StatusConflict, gin.H{
+			"success": false,
+			"message": "This email is not registered"})
+		return
+	}
+
+	userProfile, err := auth.GetUserProfileByEmail(email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to retrieve user profile"})
+		return
+	}
+
+	userId := userProfile.PK
+	userName := userProfile.FirstName
+	verificationToken, _, err := auth.UpdateVerificationToken(userId)
+	success := auth.SendResetPasswordEmail(email, userName, verificationToken)
+	if !success {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to reset password"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "A password reset email has been sent to your email address. Please follow the instructions in the email to reset your password",
+	})
+}
+
+func ResetPassword(c *gin.Context) {
+	var resetForm ResetPasswordForm
+	if err := c.ShouldBindJSON(&resetForm); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error()})
+		return
+	}
+
+	userProfile, err := auth.GetUserProfileByEmail(resetForm.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to retrieve user profile"})
+		return
+	}
+
+	storedToken := userProfile.VerificationToken
+	tokenExpirationTime := userProfile.TokenExpiry
+
+	if storedToken != resetForm.Token {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Invalid verification token"})
+		return
+	}
+
+	// Check if the token has expired
+	if time.Now().Unix() > tokenExpirationTime {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"message": "Verification token has expired"})
+		return
+	}
+
+	success := auth.UpdatePassword(userProfile.PK, resetForm.NewPassword)
+	if !success {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to update password"})
+		return
+	}
+
+	if !userProfile.IsVerified {
+		// Update the user profile to set isVerified to true
+		err = auth.VerifyUserEmail(userProfile.PK)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"message": "Failed to update user profile"})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Password reset successful"})
 }

@@ -12,4 +12,6 @@ func AuthRegister(r *gin.Engine) {
 	r.POST("/v1/auth/resend-email", controller.ResendVerificationEmail)
 	r.POST("/v1/auth/login", controller.Login)
 	r.POST("/v1/auth/validate-token", controller.ValidateToken)
+	r.POST("/v1/auth/forgot-password", controller.ForgotPassword)
+	r.POST("/v1/auth/reset-password", controller.ResetPassword)
 }
