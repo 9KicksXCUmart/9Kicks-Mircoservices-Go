@@ -258,3 +258,38 @@ func VerifyEmail(c *gin.Context) {
 		"success": true,
 		"message": "Email verified successfully"})
 }
+
+func ForgotPassword(c *gin.Context) {
+	email := c.Query("email")
+	exists, _ := auth.CheckEmailExists(email)
+	if !exists {
+		c.JSON(http.StatusConflict, gin.H{
+			"success": false,
+			"message": "This email is not registered"})
+		return
+	}
+
+	userProfile, err := auth.GetUserProfileByEmail(email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to retrieve user profile"})
+		return
+	}
+
+	userId := userProfile.PK
+	userName := userProfile.FirstName
+	verificationToken, _, err := auth.UpdateVerificationToken(userId)
+	success := auth.SendResetPasswordEmail(email, userName, verificationToken)
+	if !success {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to reset password"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "A password reset email has been sent to your email address. Please follow the instructions in the email to reset your password",
+	})
+}

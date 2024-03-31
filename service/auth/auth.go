@@ -98,3 +98,11 @@ func generateVerificationToken() (string, int64) {
 func VerifyUserEmail(userId string) error {
 	return dao.VerifyUserEmail(userId)
 }
+
+func SendResetPasswordEmail(email, name, token string) bool {
+	err := SendResetEmailTo(email, token, name)
+	if err != nil {
+		return false
+	}
+	return true
+}
