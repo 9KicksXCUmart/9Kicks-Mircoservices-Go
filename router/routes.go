@@ -10,6 +10,7 @@ func SetupRouter() *gin.Engine {
 
 	// register all route.
 	AuthRegister(route)
+	ProductRegister(route)
 
 	return route
 }
