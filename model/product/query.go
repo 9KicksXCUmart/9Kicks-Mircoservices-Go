@@ -1,11 +1,20 @@
 package product
 
-type SearchQuery struct {
-	From  int `json:"from"`
-	Size  int `json:"size"`
-	Query struct {
-		Match struct {
-			Name string `json:"name"`
-		} `json:"match"`
-	} `json:"query"`
+type NameField struct {
+	Query    string `json:"query"`
+	Operator string `json:"operator"`
+}
+
+type MatchName struct {
+	Name NameField `json:"name"`
+}
+
+type QueryName struct {
+	Match MatchName `json:"match"`
+}
+
+type SearchNameQuery struct {
+	From  int       `json:"from"`
+	Size  int       `json:"size"`
+	Query QueryName `json:"query"`
 }

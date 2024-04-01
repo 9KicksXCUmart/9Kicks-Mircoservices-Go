@@ -18,18 +18,16 @@ var (
 
 func Search(from, size int, keyword string) (product.SearchResponse, error) {
 	var searchResponse product.SearchResponse
-	searchQuery := product.SearchQuery{
+	var nameField product.NameField
+
+	nameField.Query = keyword
+	nameField.Operator = "and"
+	searchQuery := product.SearchNameQuery{
 		From: from,
 		Size: size,
-		Query: struct {
-			Match struct {
-				Name string `json:"name"`
-			} `json:"match"`
-		}{
-			Match: struct {
-				Name string `json:"name"`
-			}{
-				Name: keyword,
+		Query: product.QueryName{
+			Match: product.MatchName{
+				Name: nameField,
 			},
 		},
 	}
