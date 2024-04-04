@@ -55,7 +55,7 @@ func GetReviewList(c *gin.Context) {
 		return
 	}
 
-	reviews, success := review.GetReviewList(productId)
+	reviews, success := review.GetProductReviewDetails(productId)
 	if !success {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -66,5 +66,5 @@ func GetReviewList(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Reviews retrieved successfully",
-		"reviews": reviews})
+		"data":    reviews})
 }
