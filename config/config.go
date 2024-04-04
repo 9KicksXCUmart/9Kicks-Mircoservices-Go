@@ -2,8 +2,10 @@ package config
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -12,11 +14,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/joho/godotenv"
+	"github.com/opensearch-project/opensearch-go"
 )
 
 var (
-	cfg    aws.Config
-	awsErr error
+	cfg              aws.Config
+	awsErr           error
+	openSearchClient *opensearch.Client
 )
 
 type Secrets struct {
@@ -99,4 +103,17 @@ func GetTokenParams() TokenParams {
 		log.Fatal(err.Error())
 	}
 	return tokenParams
+}
+
+func GetOpenSearchClient() *opensearch.Client {
+	openSearchClient, _ = opensearch.NewClient(opensearch.Config{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+		Addresses: []string{os.Getenv("OPENSEARCH_ENDPOINT")},
+		Username:  os.Getenv("OPENSEARCH_USERNAME"),
+		Password:  os.Getenv("OPENSEARCH_PASSWORD"),
+	})
+
+	return openSearchClient
 }
