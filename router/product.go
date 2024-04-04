@@ -7,5 +7,5 @@ import (
 )
 
 func ProductRegister(r *gin.Engine) {
-	r.GET("/v1/products", controller.SearchProducts)
+	r.GET("/v1/products", controller.FilterProducts)
 }

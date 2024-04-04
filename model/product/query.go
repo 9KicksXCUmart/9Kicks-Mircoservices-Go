@@ -5,16 +5,38 @@ type NameField struct {
 	Operator string `json:"operator"`
 }
 
-type MatchName struct {
-	Name NameField `json:"name"`
+type Match struct {
+	Name     *NameField `json:"name,omitempty"`
+	Category string     `json:"category,omitempty"`
+	Brand    string     `json:"brand,omitempty"`
+	MinPrice float64    `json:"minPrice,omitempty"`
+	MaxPrice float64    `json:"maxPrice,omitempty"`
 }
 
-type QueryName struct {
-	Match MatchName `json:"match"`
+type Price struct {
+	Gt float64 `json:"gt"`
+	Lt float64 `json:"lt"`
 }
 
-type SearchNameQuery struct {
+type Range struct {
+	Price Price `json:"price"`
+}
+
+type Filter struct {
+	Match *Match `json:"match,omitempty"`
+	Range *Range `json:"range,omitempty"`
+}
+
+type Filters struct {
+	Filters []Filter `json:"must"`
+}
+
+type BoolQuery struct {
+	Bool Filters `json:"bool"`
+}
+
+type SearchQuery struct {
 	From  int       `json:"from"`
 	Size  int       `json:"size"`
-	Query QueryName `json:"query"`
+	Query BoolQuery `json:"query"`
 }

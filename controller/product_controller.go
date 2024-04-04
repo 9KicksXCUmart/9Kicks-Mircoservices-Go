@@ -7,11 +7,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SearchProducts(c *gin.Context) {
-	keyword := c.Query("keyword")
+func FilterProducts(c *gin.Context) {
+	name := c.Query("keyword")
 	pageNumString := c.Query("pageNum")
 	pageNum, _ := strconv.Atoi(pageNumString)
-	products, err := product.SearchProductsByKeyword(keyword, pageNum)
+	category := c.Query("category")
+	brand := c.Query("brand")
+	minPriceString := c.Query("minPrice")
+	maxPriceString := c.Query("maxPrice")
+
+	products, err := product.FilterProducts(name, category, brand, minPriceString, maxPriceString, pageNum)
 	if err != nil {
 		c.JSON(500, gin.H{
 			"message": "Internal Server Error",

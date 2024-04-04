@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"log"
 	"strings"
 
 	"github.com/opensearch-project/opensearch-go/opensearchapi"
@@ -16,24 +17,14 @@ var (
 	indexName = "ninekicks_products"
 )
 
-func Search(from, size int, keyword string) (product.SearchResponse, error) {
+func Filter(from, size int, boolQuery product.BoolQuery) (product.SearchResponse, error) {
 	var searchResponse product.SearchResponse
-	var nameField product.NameField
-
-	nameField.Query = keyword
-	nameField.Operator = "and"
-	searchQuery := product.SearchNameQuery{
-		From: from,
-		Size: size,
-		Query: product.QueryName{
-			Match: product.MatchName{
-				Name: nameField,
-			},
-		},
-	}
+	searchQuery := product.SearchQuery{From: from, Size: size, Query: boolQuery}
 
 	searchQueryBytes, _ := json.Marshal(searchQuery)
 	query := strings.NewReader(string(searchQueryBytes))
+
+	log.Println(string(searchQueryBytes))
 
 	// Search for products
 	search := opensearchapi.SearchRequest{
