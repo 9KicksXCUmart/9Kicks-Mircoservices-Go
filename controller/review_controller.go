@@ -5,9 +5,10 @@ import (
 	"9Kicks/service/review"
 	"bytes"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 func AddReview(c *gin.Context) {
@@ -54,8 +55,16 @@ func GetReviewList(c *gin.Context) {
 		return
 	}
 
-	reviews := review.GetReviewList(productId)
+	reviews, success := review.GetReviewList(productId)
+	if !success {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to retrieve reviews"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
+		"message": "Reviews retrieved successfully",
 		"reviews": reviews})
 }

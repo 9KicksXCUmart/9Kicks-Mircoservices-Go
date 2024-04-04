@@ -3,13 +3,15 @@ package review
 import (
 	"9Kicks/dao"
 	"9Kicks/model/review"
-	"github.com/google/uuid"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 func CreateReview(email string, productId string, comment string, rating int64, Anonymous bool) bool {
 
 	reviewId := "REVIEW#" + uuid.New().String()
+	productId = "PRODUCT#" + productId
 
 	productReview := review.ProductReview{
 		PK:        productId,
@@ -17,13 +19,17 @@ func CreateReview(email string, productId string, comment string, rating int64, 
 		Email:     email,
 		Comment:   comment,
 		Rating:    rating,
-		DateTime:  time.Now().String(),
+		DateTime:  time.Now().String(), //TODO: Change to a better format and timezone
 		Anonymous: Anonymous,
 	}
-	return dao.AddNewReview(productReview)
 
+	return dao.AddNewReview(productReview)
 }
 
-func GetReviewList(productId string) []review.ProductReview {
-	return dao.GetReviewList(productId)
+func GetReviewList(productId string) ([]review.ProductReview, bool) {
+	productReviews, err := dao.GetReviewList(productId)
+	if err != nil {
+		return nil, false
+	}
+	return productReviews, true
 }

@@ -6,7 +6,7 @@ type ProductReview struct {
 	Email     string `dynamodbav:"email"`
 	Comment   string `dynamodbav:"comment"`
 	Rating    int64  `dynamodbav:"rating"`
-	DateTime  string `dynamodbav:"dateTime"`
+	DateTime  string `dynamodbav:"ReviewDateTime"`
 	Anonymous bool   `dynamodbav:"anonymous"`
 }
 
