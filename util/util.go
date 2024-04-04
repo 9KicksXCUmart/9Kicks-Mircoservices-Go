@@ -13,3 +13,13 @@ func StructToAttributeValue(s interface{}) (map[string]types.AttributeValue, err
 
 	return av, nil
 }
+
+// AttributeValueToStruct converts a map of AttributeValue to a struct
+func AttributeValueToStruct(av map[string]types.AttributeValue, s interface{}) error {
+	err := attributevalue.UnmarshalMap(av, s)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
