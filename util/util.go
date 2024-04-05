@@ -1,6 +1,8 @@
 package util
 
 import (
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
@@ -14,12 +16,9 @@ func StructToAttributeValue(s interface{}) (map[string]types.AttributeValue, err
 	return av, nil
 }
 
-// AttributeValueToStruct converts a map of AttributeValue to a struct
-func AttributeValueToStruct(av map[string]types.AttributeValue, s interface{}) error {
-	err := attributevalue.UnmarshalMap(av, s)
-	if err != nil {
-		return err
-	}
+func GetCurrentTime() string {
+	loc, _ := time.LoadLocation("Asia/Hong_Kong")
+	layout := "2006-01-02T15:04:05"
 
-	return nil
+	return time.Now().In(loc).Format(layout)
 }

@@ -57,3 +57,14 @@ func FilterProducts(name, category, brand, minPriceString, maxPriceString string
 
 	return ProductList, nil
 }
+
+func GetProductDetailByID(productId string) (ProductInfo, error) {
+	var productInfo ProductInfo
+	document, err := dao.GetProductDetailByID(productId)
+	if err != nil {
+		return productInfo, err
+	}
+	productInfo = document.Source
+
+	return productInfo, nil
+}
