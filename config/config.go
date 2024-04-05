@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/joho/godotenv"
 	"github.com/opensearch-project/opensearch-go"
@@ -53,6 +54,10 @@ func init() {
 
 func GetDynamoDBClient() *dynamodb.Client {
 	return dynamodb.NewFromConfig(cfg)
+}
+
+func GetS3Client() *s3.Client {
+	return s3.NewFromConfig(cfg)
 }
 
 func GetJWTSecrets() Secrets {

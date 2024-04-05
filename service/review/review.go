@@ -3,8 +3,8 @@ package review
 import (
 	"9Kicks/dao"
 	. "9Kicks/model/review"
+	"9Kicks/util"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -13,16 +13,13 @@ func CreateReview(email string, productId string, comment string, rating int64, 
 	reviewId := "REVIEW#" + uuid.New().String()
 	productId = "PRODUCT#" + productId
 
-	loc, _ := time.LoadLocation("Asia/Hong_Kong")
-	layout := "2006-01-02T15:04:05"
-
 	productReview := ProductReview{
 		PK:        productId,
 		SK:        reviewId,
 		Email:     email,
 		Comment:   comment,
 		Rating:    rating,
-		DateTime:  time.Now().In(loc).Format(layout),
+		DateTime:  util.GetCurrentTime(),
 		Anonymous: Anonymous,
 	}
 

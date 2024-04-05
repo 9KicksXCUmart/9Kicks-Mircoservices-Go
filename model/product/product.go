@@ -1,5 +1,7 @@
 package product
 
+import "mime/multipart"
+
 type Product struct {
 	ID    int    `json:"id"`
 	Name  string `json:"name"`
@@ -32,7 +34,7 @@ type ProductInfo struct {
 	Name           string   `json:"name"`
 	Category       string   `json:"category"`
 	Price          float64  `json:"price"`
-	DiscountPrice  *float64 `json:"discountPrice"`
+	DiscountPrice  float64  `json:"discountPrice"`
 	IsDiscount     bool     `json:"isDiscount"`
 	SKU            string   `json:"sku"`
 	ImageURL       string   `json:"imageUrl"`
@@ -73,4 +75,20 @@ type SearchResponse struct {
 	TimedOut bool      `json:"timed_out"`
 	Share    Shards    `json:"_shards"`
 	Hits     OuterHits `json:"hits"`
+}
+
+type PublishProductForm struct {
+	Brand         string   `json:"brand"`
+	Name          string   `json:"name"`
+	Category      string   `json:"category"`
+	Price         float64  `json:"price"`
+	DiscountPrice float64  `json:"discountPrice"`
+	IsDiscount    bool     `json:"isDiscount"`
+	SKU           string   `json:"sku"`
+	Size          ShoeSize `json:"size"`
+}
+
+type ProductFormData struct {
+	Info string                `form:"info" binding:"required"`
+	File *multipart.FileHeader `form:"image" binding:"required"`
 }
