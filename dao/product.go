@@ -67,8 +67,21 @@ func CreateProduct(productInfo product.ProductInfo) error {
 	return nil
 }
 
-func GetProductDetailByID() {
-	// TODO: Get product detail by ID
+func GetProductDetailByID(productId string) (product.DocumentResponse, error) {
+	var documentResponse product.DocumentResponse
+	resp, err := client.Get(indexName, productId)
+	if err != nil {
+		return documentResponse, err
+	}
+	buf := new(bytes.Buffer)
+	_, err = buf.ReadFrom(resp.Body)
+	if err != nil {
+		return documentResponse, err
+	}
+	respString := buf.String()
+	documentResponse, err = loadDocumentResponse(respString)
+
+	return documentResponse, err
 }
 
 func loadSearchResponse(dataString string) (product.SearchResponse, error) {
@@ -78,4 +91,13 @@ func loadSearchResponse(dataString string) (product.SearchResponse, error) {
 		return searchResponse, err
 	}
 	return searchResponse, nil
+}
+
+func loadDocumentResponse(dataString string) (product.DocumentResponse, error) {
+	var documentResponse product.DocumentResponse
+	err := json.Unmarshal([]byte(dataString), &documentResponse)
+	if err != nil {
+		return documentResponse, err
+	}
+	return documentResponse, nil
 }

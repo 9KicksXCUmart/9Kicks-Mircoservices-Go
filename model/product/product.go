@@ -92,3 +92,13 @@ type ProductFormData struct {
 	Info string                `form:"info" binding:"required"`
 	File *multipart.FileHeader `form:"image" binding:"required"`
 }
+
+type DocumentResponse struct {
+	Index       string      `json:"_index"`
+	ID          string      `json:"_id"`
+	Version     int         `json:"_version"`
+	SeqNo       int         `json:"_seq_no"`
+	PrimaryTerm int         `json:"_primary_term"`
+	Found       bool        `json:"found"`
+	Source      ProductInfo `json:"_source"`
+}

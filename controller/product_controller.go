@@ -74,3 +74,19 @@ func PublishProduct(c *gin.Context) {
 		"success": true,
 		"message": "Product created successfully"})
 }
+
+func GetProductDetailByID(c *gin.Context) {
+	productId := c.Param("id")
+	productInfo, err := product.GetProductDetailByID(productId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to get product detail"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Get product detail successfully",
+		"data":    productInfo,
+	})
+}

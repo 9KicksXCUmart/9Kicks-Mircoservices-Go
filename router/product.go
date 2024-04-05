@@ -9,4 +9,5 @@ import (
 func ProductRegister(r *gin.Engine) {
 	r.GET("/v1/products", controller.FilterProducts)
 	r.POST("/v1/products/create", controller.PublishProduct)
+	r.GET("/v1/products/:id", controller.GetProductDetailByID)
 }
