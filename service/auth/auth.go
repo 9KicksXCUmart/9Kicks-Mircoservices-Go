@@ -60,7 +60,7 @@ func IsValidPassword(hashedPassword, password string) bool {
 
 func GenerateJWT(secretKey, email, userID string) (string, time.Time, error) {
 	// Set jwt token expiration to be 1 hour
-	expirationTime := time.Now().Add(time.Hour)
+	expirationTime := time.Now().Add(time.Hour * 48)
 	claims := &auth.Claims{
 		Email:  email,
 		UserID: userID,
