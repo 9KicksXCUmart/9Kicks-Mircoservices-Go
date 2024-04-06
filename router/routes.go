@@ -13,7 +13,7 @@ func SetupRouter() *gin.Engine {
 
 	// CORS
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{os.Getenv("FRONTEND_HOST")}
+	config.AllowOrigins = []string{"http://localhost:5173", "https://9kicks.shop"}
 	route.Use(cors.New(config))
 	log.Println("CORS enabled for frontend host: ", os.Getenv("FRONTEND_HOST"))
 
