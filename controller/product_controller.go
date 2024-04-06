@@ -126,3 +126,20 @@ func DeleteProduct(c *gin.Context) {
 		"success": true,
 		"message": "Product deleted successfully"})
 }
+
+func UpdateStock(c *gin.Context) {
+	productId := c.Param("id")
+	size := c.Query("size")
+	quantityString := c.Query("quantity")
+	quantity, _ := strconv.Atoi(quantityString)
+	success := product.UpdateStock(productId, size, quantity)
+	if !success {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to update stock"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Stock updated successfully"})
+}

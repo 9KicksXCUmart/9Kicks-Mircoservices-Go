@@ -58,6 +58,15 @@ func DeleteProduct(productId string) (success bool) {
 	return true
 }
 
+func UpdateStock(productId string, size string, quantity int) (success bool) {
+	err := dao.UpdateStock(productId, size, quantity)
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
 func uploadImage(file multipart.FileHeader, productId string) (publicURL string, success bool) {
 	fileObject, err := file.Open()
 

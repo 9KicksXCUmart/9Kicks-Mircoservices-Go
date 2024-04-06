@@ -6,15 +6,36 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
+	"reflect"
 	"strings"
 
 	"github.com/opensearch-project/opensearch-go/opensearchapi"
 )
 
 var (
-	client    = config.GetOpenSearchClient()
-	indexName = "ninekicks_products"
+	client       = config.GetOpenSearchClient()
+	indexName    = "ninekicks_products"
+	sizeFieldMap = map[string]string{
+		"5.5":  "Size5_5",
+		"6.0":  "Size6_0",
+		"6.5":  "Size6_5",
+		"7.0":  "Size7_0",
+		"7.5":  "Size7_5",
+		"8.0":  "Size8_0",
+		"8.5":  "Size8_5",
+		"9.0":  "Size9_0",
+		"9.5":  "Size9_5",
+		"10.0": "Size10_0",
+		"10.5": "Size10_5",
+		"11.0": "Size11_0",
+		"11.5": "Size11_5",
+		"12.0": "Size12_0",
+		"12.5": "Size12_5",
+		"13.0": "Size13_0",
+		"14.0": "Size14_0",
+	}
 )
 
 func Filter(from, size int, boolQuery product.BoolQuery) (product.SearchResponse, error) {
@@ -95,6 +116,36 @@ func DeleteProduct(productId string) error {
 		return err
 	}
 	log.Println(resp)
+	return nil
+}
+
+func UpdateStock(productId string, size string, quantity int) error {
+	documentResponse, err := GetProductDetailByID(productId)
+	if err != nil {
+		return err
+	}
+
+	productInfo := documentResponse.Source
+	// Get the field name from the map
+	fieldName, ok := sizeFieldMap[size]
+	if !ok {
+		return fmt.Errorf("invalid size: %s", size)
+	}
+
+	// Use reflection to update the corresponding field
+	sizeStruct := reflect.ValueOf(&productInfo.Size).Elem()
+	field := sizeStruct.FieldByName(fieldName)
+	if field.IsValid() && field.CanSet() {
+		field.SetInt(int64(quantity))
+	} else {
+		return fmt.Errorf("invalid field: %s", fieldName)
+	}
+
+	err = UpdateProduct(productInfo)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
