@@ -106,7 +106,7 @@ func Login(c *gin.Context) {
 		Value:    tokenString,
 		Expires:  expirationTime,
 		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode, // Set SameSite policy to Strict
+		SameSite: http.SameSiteNoneMode,
 	})
 
 	c.JSON(http.StatusOK, gin.H{
