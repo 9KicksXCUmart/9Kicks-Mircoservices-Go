@@ -90,3 +90,39 @@ func GetProductDetailByID(c *gin.Context) {
 		"data":    productInfo,
 	})
 }
+
+func UpdateProductInfo(c *gin.Context) {
+	var productInfo ProductInfo
+	if err := c.ShouldBindJSON(&productInfo); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error()})
+		return
+	}
+
+	success := product.UpdateProduct(productInfo)
+	if !success {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to update product"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Product updated successfully"})
+}
+
+func DeleteProduct(c *gin.Context) {
+	productId := c.Param("id")
+	success := product.DeleteProduct(productId)
+	if !success {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to delete product"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Product deleted successfully"})
+}

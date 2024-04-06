@@ -44,7 +44,7 @@ func Filter(from, size int, boolQuery product.BoolQuery) (product.SearchResponse
 	return searchResponse, err
 }
 
-func CreateProduct(productInfo product.ProductInfo) error {
+func UpdateProduct(productInfo product.ProductInfo) error {
 	docId := productInfo.ID
 	productInfoBytes, _ := json.Marshal(productInfo)
 
@@ -82,6 +82,20 @@ func GetProductDetailByID(productId string) (product.DocumentResponse, error) {
 	documentResponse, err = loadDocumentResponse(respString)
 
 	return documentResponse, err
+}
+
+func DeleteProduct(productId string) error {
+	req := opensearchapi.DeleteRequest{
+		Index:      indexName,
+		DocumentID: productId,
+	}
+
+	resp, err := req.Do(context.Background(), client)
+	if err != nil {
+		return err
+	}
+	log.Println(resp)
+	return nil
 }
 
 func loadSearchResponse(dataString string) (product.SearchResponse, error) {

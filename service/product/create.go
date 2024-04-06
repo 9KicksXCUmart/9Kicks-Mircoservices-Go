@@ -32,7 +32,25 @@ func CreateProduct(form PublishProductForm, file multipart.FileHeader) (success 
 	publicURL, success := uploadImage(file, productInfo.ID)
 	productInfo.ImageURL = publicURL
 
-	err := dao.CreateProduct(productInfo)
+	err := dao.UpdateProduct(productInfo)
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
+func UpdateProduct(productInfo ProductInfo) (success bool) {
+	err := dao.UpdateProduct(productInfo)
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
+func DeleteProduct(productId string) (success bool) {
+	err := dao.DeleteProduct(productId)
 	if err != nil {
 		return false
 	}
