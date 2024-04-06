@@ -4,6 +4,7 @@ import (
 	. "9Kicks/model/product"
 	"9Kicks/service/product"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -125,6 +126,27 @@ func DeleteProduct(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Product deleted successfully"})
+}
+
+func GetStock(c *gin.Context) {
+	productId := c.Param("id")
+	size := c.Query("size")
+	remainingStock, success := product.CheckRemainingStock(productId, size)
+	if !success {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to check stock"})
+		return
+	}
+
+	message := fmt.Sprintf("Remaining stock for size %s: %d", size, remainingStock)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": message,
+		"data": gin.H{
+			"remainingStock": remainingStock,
+		}})
 }
 
 func UpdateStock(c *gin.Context) {

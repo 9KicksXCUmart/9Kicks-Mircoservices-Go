@@ -58,6 +58,15 @@ func DeleteProduct(productId string) (success bool) {
 	return true
 }
 
+func CheckRemainingStock(productId string, size string) (remaining int, success bool) {
+	remainingStock, err := dao.GetRemainingStock(productId, size)
+	if err != nil {
+		return 0, false
+	}
+
+	return remainingStock, true
+}
+
 func UpdateStock(productId string, size string, quantity int) (success bool) {
 	err := dao.UpdateStock(productId, size, quantity)
 	if err != nil {

@@ -119,6 +119,29 @@ func DeleteProduct(productId string) error {
 	return nil
 }
 
+func GetRemainingStock(productId string, size string) (int, error) {
+	documentResponse, err := GetProductDetailByID(productId)
+	if err != nil {
+		return 0, err
+	}
+
+	productInfo := documentResponse.Source
+	// Get the field name from the map
+	fieldName, ok := sizeFieldMap[size]
+	if !ok {
+		return 0, fmt.Errorf("invalid size: %s", size)
+	}
+
+	// Use reflection to get the corresponding field
+	sizeStruct := reflect.ValueOf(&productInfo.Size).Elem()
+	field := sizeStruct.FieldByName(fieldName)
+	if field.IsValid() {
+		return int(field.Int()), nil
+	}
+
+	return 0, fmt.Errorf("invalid field: %s", fieldName)
+}
+
 func UpdateStock(productId string, size string, quantity int) error {
 	documentResponse, err := GetProductDetailByID(productId)
 	if err != nil {
