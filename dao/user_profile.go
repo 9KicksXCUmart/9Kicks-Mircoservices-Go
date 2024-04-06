@@ -17,7 +17,7 @@ import (
 var (
 	dynamoDBClient = config.GetDynamoDBClient()
 	tableName      = os.Getenv("DB_TABLE_NAME")
-	emailIndexName = "User-email-index"
+	emailIndexName = "email-SK-index"
 )
 
 func GetUserProfileByEmail(email string) ([]auth.UserProfile, error) {
@@ -26,12 +26,14 @@ func GetUserProfileByEmail(email string) ([]auth.UserProfile, error) {
 	queryParams := &dynamodb.QueryInput{
 		TableName:              aws.String(tableName),
 		IndexName:              aws.String(emailIndexName),
-		KeyConditionExpression: aws.String("#pk = :email"),
+		KeyConditionExpression: aws.String("#email = :email AND begins_with(#sk, :skPrefix)"),
 		ExpressionAttributeNames: map[string]string{
-			"#pk": "email",
+			"#email": "email",
+			"#sk":    "SK",
 		},
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":email": &types.AttributeValueMemberS{Value: email},
+			":email":    &types.AttributeValueMemberS{Value: email},
+			":skPrefix": &types.AttributeValueMemberS{Value: "USER_PROFILE"},
 		},
 	}
 
