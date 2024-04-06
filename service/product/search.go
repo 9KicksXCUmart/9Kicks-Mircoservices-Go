@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-const PageSize int = 48
+const PageSize int = 16
 
 func FilterProducts(name, category, brand, minPriceString, maxPriceString string, pageNum int) ([]ProductInfo, error) {
 	var ProductList []ProductInfo
