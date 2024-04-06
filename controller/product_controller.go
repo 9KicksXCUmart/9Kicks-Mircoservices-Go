@@ -152,16 +152,16 @@ func GetStock(c *gin.Context) {
 func UpdateStock(c *gin.Context) {
 	productId := c.Param("id")
 	size := c.Query("size")
-	quantityString := c.Query("quantity")
-	quantity, _ := strconv.Atoi(quantityString)
-	success := product.UpdateStock(productId, size, quantity)
+	soldAmountString := c.Query("sold")
+	soldAmount, _ := strconv.Atoi(soldAmountString)
+	success, msg := product.UpdateStock(productId, size, soldAmount)
 	if !success {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to update stock"})
+			"message": msg})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Stock updated successfully"})
+		"message": msg})
 }

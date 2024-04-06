@@ -142,7 +142,7 @@ func GetRemainingStock(productId string, size string) (int, error) {
 	return 0, fmt.Errorf("invalid field: %s", fieldName)
 }
 
-func UpdateStock(productId string, size string, quantity int) error {
+func UpdateStock(productId string, size string, sold int) error {
 	documentResponse, err := GetProductDetailByID(productId)
 	if err != nil {
 		return err
@@ -159,10 +159,16 @@ func UpdateStock(productId string, size string, quantity int) error {
 	sizeStruct := reflect.ValueOf(&productInfo.Size).Elem()
 	field := sizeStruct.FieldByName(fieldName)
 	if field.IsValid() && field.CanSet() {
-		field.SetInt(int64(quantity))
+		if field.Int() < int64(sold) {
+			return fmt.Errorf("not enough stock for size: %s", size)
+		}
+		field.SetInt(field.Int() - int64(sold))
 	} else {
 		return fmt.Errorf("invalid field: %s", fieldName)
 	}
+
+	// Update the buy count
+	productInfo.BuyCount += sold
 
 	err = UpdateProduct(productInfo)
 	if err != nil {

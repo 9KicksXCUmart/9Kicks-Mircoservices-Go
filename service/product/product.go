@@ -67,13 +67,13 @@ func CheckRemainingStock(productId string, size string) (remaining int, success 
 	return remainingStock, true
 }
 
-func UpdateStock(productId string, size string, quantity int) (success bool) {
-	err := dao.UpdateStock(productId, size, quantity)
+func UpdateStock(productId string, size string, sold int) (success bool, message string) {
+	err := dao.UpdateStock(productId, size, sold)
 	if err != nil {
-		return false
+		return false, err.Error()
 	}
 
-	return true
+	return true, "Stock updated successfully"
 }
 
 func uploadImage(file multipart.FileHeader, productId string) (publicURL string, success bool) {
