@@ -11,6 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
+const IndexName = "email-SK-index"
+
 func AddNewReview(productReview review.ProductReview) (success bool) {
 	reviewItem, err := util.StructToAttributeValue(productReview)
 	if err != nil {
@@ -57,4 +59,37 @@ func GetReviewList(productId string) ([]review.ProductReview, error) {
 	}
 
 	return productReviews, nil
+}
+
+func GetUserReviews(email string) ([]review.ProductReview, error) {
+	var userReviews []review.ProductReview
+
+	queryParams := &dynamodb.QueryInput{
+		TableName:              aws.String(tableName),
+		IndexName:              aws.String(IndexName),
+		KeyConditionExpression: aws.String("#email = :email AND begins_with(#sk, :skPrefix)"),
+		ExpressionAttributeNames: map[string]string{
+			"#email": "email",
+			"#sk":    "SK",
+		},
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":email":    &types.AttributeValueMemberS{Value: email},
+			":skPrefix": &types.AttributeValueMemberS{Value: "REVIEW#"},
+		},
+	}
+
+	result, err := dynamoDBClient.Query(context.TODO(), queryParams)
+	if err != nil || len(result.Items) == 0 {
+		return userReviews, err
+	}
+	for _, item := range result.Items {
+		var userReview review.ProductReview
+		err := attributevalue.UnmarshalMap(item, &userReview)
+		if err != nil {
+			return userReviews, err
+		}
+		userReviews = append(userReviews, userReview)
+	}
+
+	return userReviews, nil
 }

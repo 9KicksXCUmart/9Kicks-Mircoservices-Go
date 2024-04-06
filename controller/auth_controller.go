@@ -4,13 +4,11 @@ import (
 	"9Kicks/config"
 	. "9Kicks/model/auth"
 	"9Kicks/service/auth"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 var (
@@ -133,22 +131,8 @@ func ValidateToken(c *gin.Context) {
 
 	tokenString := parts[1]
 
-	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(secretKey), nil
-	})
-
+	claims, err := auth.DecodeJWT(secretKey, tokenString)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"message": "Invalid token"})
-		return
-	}
-
-	claims, ok := token.Claims.(*Claims)
-	if !ok || !token.Valid {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
 			"message": "Invalid token"})
