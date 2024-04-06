@@ -26,6 +26,28 @@ func CreateReview(email string, productId string, comment string, rating int64, 
 	return dao.AddNewReview(productReview)
 }
 
+func GetProductReviewsByUser(email string) ([]UserReview, bool) {
+	var userReviews []UserReview
+	reviews, err := dao.GetUserReviews(email)
+	if err != nil {
+		return nil, false
+	}
+
+	for _, review := range reviews {
+		reviewId := strings.Split(review.SK, "#")[1]
+		userReviews = append(userReviews, UserReview{
+			ProductId: strings.Split(review.PK, "#")[1],
+			ReviewId:  reviewId,
+			Comment:   review.Comment,
+			Rating:    review.Rating,
+			DateTime:  review.DateTime,
+			Anonymous: review.Anonymous,
+		})
+	}
+
+	return userReviews, true
+}
+
 func GetProductReviewDetails(productId string) (ReviewDetails, bool) {
 	var reviewDetails ReviewDetails
 	var reviewList []ReviewResponse

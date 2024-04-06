@@ -40,3 +40,12 @@ type ReviewDetails struct {
 	RatingPercentage RatingPercentage `json:"ratingPercentage"`
 	Reviews          []ReviewResponse `json:"reviews"`
 }
+
+type UserReview struct {
+	ProductId string `json:"productId"`
+	ReviewId  string `json:"reviewId"`
+	Comment   string `json:"comment"`
+	Rating    int64  `json:"rating"`
+	DateTime  string `json:"reviewDateTime"`
+	Anonymous bool   `json:"anonymous"`
+}
