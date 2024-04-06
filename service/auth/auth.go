@@ -128,3 +128,15 @@ func SendResetPasswordEmail(email, name, token string) bool {
 	}
 	return true
 }
+
+func DecodeJWT(secretKey, token string) (*auth.Claims, error) {
+	claims := &auth.Claims{}
+	_, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(secretKey), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return claims, nil
+}
