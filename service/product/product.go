@@ -58,13 +58,22 @@ func DeleteProduct(productId string) (success bool) {
 	return true
 }
 
-func UpdateStock(productId string, size string, quantity int) (success bool) {
-	err := dao.UpdateStock(productId, size, quantity)
+func CheckRemainingStock(productId string, size string) (remaining int, success bool) {
+	remainingStock, err := dao.GetRemainingStock(productId, size)
 	if err != nil {
-		return false
+		return 0, false
 	}
 
-	return true
+	return remainingStock, true
+}
+
+func UpdateStock(productId string, size string, sold int) (success bool, message string) {
+	err := dao.UpdateStock(productId, size, sold)
+	if err != nil {
+		return false, err.Error()
+	}
+
+	return true, "Stock updated successfully"
 }
 
 func uploadImage(file multipart.FileHeader, productId string) (publicURL string, success bool) {

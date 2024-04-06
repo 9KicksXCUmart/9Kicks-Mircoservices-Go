@@ -4,6 +4,7 @@ import (
 	. "9Kicks/model/product"
 	"9Kicks/service/product"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -127,19 +128,40 @@ func DeleteProduct(c *gin.Context) {
 		"message": "Product deleted successfully"})
 }
 
-func UpdateStock(c *gin.Context) {
+func GetStock(c *gin.Context) {
 	productId := c.Param("id")
 	size := c.Query("size")
-	quantityString := c.Query("quantity")
-	quantity, _ := strconv.Atoi(quantityString)
-	success := product.UpdateStock(productId, size, quantity)
+	remainingStock, success := product.CheckRemainingStock(productId, size)
 	if !success {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to update stock"})
+			"message": "Failed to check stock"})
+		return
+	}
+
+	message := fmt.Sprintf("Remaining stock for size %s: %d", size, remainingStock)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": message,
+		"data": gin.H{
+			"remainingStock": remainingStock,
+		}})
+}
+
+func UpdateStock(c *gin.Context) {
+	productId := c.Param("id")
+	size := c.Query("size")
+	soldAmountString := c.Query("sold")
+	soldAmount, _ := strconv.Atoi(soldAmountString)
+	success, msg := product.UpdateStock(productId, size, soldAmount)
+	if !success {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": msg})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Stock updated successfully"})
+		"message": msg})
 }
