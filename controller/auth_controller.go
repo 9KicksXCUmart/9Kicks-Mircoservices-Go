@@ -98,21 +98,13 @@ func Login(c *gin.Context) {
 	}
 
 	parts := strings.Split(userProfile.PK, "#")
-	tokenString, expirationTime, err := auth.GenerateJWT(secretKey, user.Email, parts[1])
-
-	// Set the jwt token in a cookie
-	http.SetCookie(c.Writer, &http.Cookie{
-		Name:     "jwt",
-		Value:    tokenString,
-		Expires:  expirationTime,
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteNoneMode,
-	})
+	tokenString, _, err := auth.GenerateJWT(secretKey, user.Email, parts[1])
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Login successful"})
+		"message": "Login successful",
+		"token":   tokenString,
+	})
 }
 
 func ValidateToken(c *gin.Context) {
