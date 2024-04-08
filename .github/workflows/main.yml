@@ -23,7 +23,7 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: 'Create env file'
+      - name: "Create env file"
         run: |
           touch .env
           echo AWS_ACCESS_KEY_ID=${{ secrets.MY_AWS_ACCESS_KEY_ID }} >> .env
@@ -38,7 +38,7 @@ jobs:
       - name: Automatic Tagging of Releases
         id: increment-git-tag
         run: |
-          bash ./scripts/git_update.sh -v patch 
+          bash ./scripts/git_update.sh -v patch
 
       - name: Build, Tag, and Push the Image to Amazon ECR
         id: build-image

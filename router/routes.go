@@ -10,7 +10,7 @@ func SetupRouter() *gin.Engine {
 
 	// CORS
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:5173", "https://9kicks.shop", "https://www.9kicks.shop", "https://kotlin.9kicks.shop"}
+	config.AllowOrigins = []string{"*"}
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"}
 	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization", "Access-Control-Allow-Origin", "Access-Control-Allow-Headers", "Access-Control-Allow-Methods"}
 	config.AllowCredentials = true
