@@ -1,3 +1,6 @@
+/*
+Package controller implements the functions for handling requests to the authentication endpoints.
+*/
 package controller
 
 import (
@@ -11,16 +14,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var (
-	secretKey = config.GetJWTSecrets().JWTUserSecret
-)
+var secretKey = config.GetJWTSecrets().JWTUserSecret
 
 func Signup(c *gin.Context) {
 	var user UserSignUpForm
 	if err := c.ShouldBindJSON(&user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": err.Error()})
+			"message": err.Error(),
+		})
 		return
 	}
 
@@ -28,7 +30,8 @@ func Signup(c *gin.Context) {
 	if exists {
 		c.JSON(http.StatusConflict, gin.H{
 			"success": false,
-			"message": "Email already exists"})
+			"message": "Email already exists",
+		})
 		return
 	}
 
@@ -36,7 +39,8 @@ func Signup(c *gin.Context) {
 	if !success {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to create user"})
+			"message": "Failed to create user",
+		})
 		return
 	}
 
@@ -45,13 +49,15 @@ func Signup(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to send verification email"})
+			"message": "Failed to send verification email",
+		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "A verification email has been sent to your email address. Please verify your email to complete registration"})
+		"message": "A verification email has been sent to your email address. Please verify your email to complete registration",
+	})
 }
 
 func Login(c *gin.Context) {
@@ -60,7 +66,8 @@ func Login(c *gin.Context) {
 	if err := c.ShouldBindJSON(&user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": err.Error()})
+			"message": err.Error(),
+		})
 		return
 	}
 
@@ -68,7 +75,8 @@ func Login(c *gin.Context) {
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
-			"message": "This email is not registered"})
+			"message": "This email is not registered",
+		})
 		return
 	}
 
@@ -76,7 +84,8 @@ func Login(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to retrieve user profile"})
+			"message": "Failed to retrieve user profile",
+		})
 		return
 	}
 
@@ -85,7 +94,8 @@ func Login(c *gin.Context) {
 	if !isValidPassword {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
-			"message": "Wrong password"})
+			"message": "Wrong password",
+		})
 		return
 	}
 
@@ -93,7 +103,8 @@ func Login(c *gin.Context) {
 	if !userProfile.IsVerified {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
-			"message": "Email not verified"})
+			"message": "Email not verified",
+		})
 		return
 	}
 
@@ -118,7 +129,8 @@ func ValidateToken(c *gin.Context) {
 	if len(parts) != 2 || parts[0] != "Bearer" {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
-			"message": "Invalid Authorization header format"})
+			"message": "Invalid Authorization header format",
+		})
 		return
 	}
 
@@ -128,7 +140,8 @@ func ValidateToken(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
-			"message": "Invalid token"})
+			"message": "Invalid token",
+		})
 		return
 	}
 
@@ -147,7 +160,8 @@ func ResendVerificationEmail(c *gin.Context) {
 	if email == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": "Missing email"})
+			"message": "Missing email",
+		})
 		return
 	}
 
@@ -155,7 +169,8 @@ func ResendVerificationEmail(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to retrieve user profile"})
+			"message": "Failed to retrieve user profile",
+		})
 		return
 	}
 	userId := userProfile.PK
@@ -164,7 +179,8 @@ func ResendVerificationEmail(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to update verification token"})
+			"message": "Failed to update verification token",
+		})
 		return
 	}
 
@@ -172,12 +188,14 @@ func ResendVerificationEmail(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to send verification email"})
+			"message": "Failed to send verification email",
+		})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "A verification email has been sent to your email address. Please verify your email to complete registration"})
+		"message": "A verification email has been sent to your email address. Please verify your email to complete registration",
+	})
 }
 
 func VerifyEmail(c *gin.Context) {
@@ -186,7 +204,8 @@ func VerifyEmail(c *gin.Context) {
 	if err := c.ShouldBindJSON(&form); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": err.Error()})
+			"message": err.Error(),
+		})
 		return
 	}
 	token := form.Token
@@ -200,14 +219,16 @@ func VerifyEmail(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to retrieve user profile"})
+			"message": "Failed to retrieve user profile",
+		})
 		return
 	}
 
 	if userProfile.IsVerified {
 		c.JSON(http.StatusConflict, gin.H{
 			"success": false,
-			"message": "Email already verified"})
+			"message": "Email already verified",
+		})
 		return
 	}
 
@@ -217,7 +238,8 @@ func VerifyEmail(c *gin.Context) {
 	if storedToken != token {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
-			"message": "Invalid verification token"})
+			"message": "Invalid verification token",
+		})
 		return
 	}
 
@@ -225,7 +247,8 @@ func VerifyEmail(c *gin.Context) {
 	if time.Now().Unix() > tokenExpirationTime {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
-			"message": "Verification token has expired"})
+			"message": "Verification token has expired",
+		})
 		return
 	}
 
@@ -234,13 +257,15 @@ func VerifyEmail(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to update user profile"})
+			"message": "Failed to update user profile",
+		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Email verified successfully"})
+		"message": "Email verified successfully",
+	})
 }
 
 func ForgotPassword(c *gin.Context) {
@@ -249,7 +274,8 @@ func ForgotPassword(c *gin.Context) {
 	if !exists {
 		c.JSON(http.StatusConflict, gin.H{
 			"success": false,
-			"message": "This email is not registered"})
+			"message": "This email is not registered",
+		})
 		return
 	}
 
@@ -257,7 +283,8 @@ func ForgotPassword(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to retrieve user profile"})
+			"message": "Failed to retrieve user profile",
+		})
 		return
 	}
 
@@ -268,7 +295,8 @@ func ForgotPassword(c *gin.Context) {
 	if !success {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to reset password"})
+			"message": "Failed to reset password",
+		})
 		return
 	}
 
@@ -283,7 +311,8 @@ func ResetPassword(c *gin.Context) {
 	if err := c.ShouldBindJSON(&resetForm); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": err.Error()})
+			"message": err.Error(),
+		})
 		return
 	}
 
@@ -291,7 +320,8 @@ func ResetPassword(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to retrieve user profile"})
+			"message": "Failed to retrieve user profile",
+		})
 		return
 	}
 
@@ -301,7 +331,8 @@ func ResetPassword(c *gin.Context) {
 	if storedToken != resetForm.Token {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
-			"message": "Invalid verification token"})
+			"message": "Invalid verification token",
+		})
 		return
 	}
 
@@ -309,7 +340,8 @@ func ResetPassword(c *gin.Context) {
 	if time.Now().Unix() > tokenExpirationTime {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
-			"message": "Verification token has expired"})
+			"message": "Verification token has expired",
+		})
 		return
 	}
 
@@ -317,7 +349,8 @@ func ResetPassword(c *gin.Context) {
 	if !success {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to update password"})
+			"message": "Failed to update password",
+		})
 		return
 	}
 
@@ -327,12 +360,14 @@ func ResetPassword(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"success": false,
-				"message": "Failed to update user profile"})
+				"message": "Failed to update user profile",
+			})
 			return
 		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Password reset successful"})
+		"message": "Password reset successful",
+	})
 }

@@ -1,3 +1,6 @@
+/*
+Package config provides the configuration for the AWS SDK and OpenSearch client.
+*/
 package config
 
 import (

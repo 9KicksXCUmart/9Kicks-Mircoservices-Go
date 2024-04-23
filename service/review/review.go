@@ -1,3 +1,6 @@
+/*
+Package review provides the functionality to create a review for a product, get all reviews by a user and get all reviews for a product.
+*/
 package review
 
 import (

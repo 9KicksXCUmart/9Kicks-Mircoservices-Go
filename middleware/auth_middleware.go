@@ -1,3 +1,6 @@
+/*
+Package middleware restricts access to certain routes based on the user's authentication status.
+*/
 package middleware
 
 import (
@@ -25,7 +28,6 @@ func authMiddleware() gin.HandlerFunc {
 			}
 			return token, nil
 		})
-
 		if err != nil {
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return

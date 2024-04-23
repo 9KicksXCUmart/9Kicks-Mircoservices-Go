@@ -1,3 +1,6 @@
+/*
+Package product provides functions to filter products by name, category, brand, price, size and get product detail by product id.
+*/
 package product
 
 import (

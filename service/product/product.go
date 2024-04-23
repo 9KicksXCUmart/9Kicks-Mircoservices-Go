@@ -1,3 +1,6 @@
+/*
+Package product provides functions to handle product related operations
+*/
 package product
 
 import (

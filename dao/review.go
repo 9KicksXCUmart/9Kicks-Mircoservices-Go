@@ -1,3 +1,6 @@
+/*
+dao package responsible for handling all the data access operations related to reviews.
+*/
 package dao
 
 import (

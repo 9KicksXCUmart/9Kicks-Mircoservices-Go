@@ -1,3 +1,6 @@
+/*
+dao package responsible for handling user profile data in the database
+*/
 package dao
 
 import (

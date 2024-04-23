@@ -1,3 +1,6 @@
+/*
+Package controller is used to handle the requests about product browsing, creating, updating and deleting products.
+*/
 package controller
 
 import (
@@ -44,7 +47,8 @@ func PublishProduct(c *gin.Context) {
 	if err := c.Bind(&formData); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": "Error binding form data"})
+			"message": "Error binding form data",
+		})
 		return
 	}
 	log.Println(formData.Info)
@@ -52,14 +56,16 @@ func PublishProduct(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": "Wrong product information format, it must be a JSON string"})
+			"message": "Wrong product information format, it must be a JSON string",
+		})
 		return
 	}
 	file, err := c.FormFile("image")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": "Error getting the image"})
+			"message": "Error getting the image",
+		})
 		return
 	}
 
@@ -67,13 +73,15 @@ func PublishProduct(c *gin.Context) {
 	if !success {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to create product"})
+			"message": "Failed to create product",
+		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Product created successfully"})
+		"message": "Product created successfully",
+	})
 }
 
 func GetProductDetailByID(c *gin.Context) {
@@ -82,7 +90,8 @@ func GetProductDetailByID(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to get product detail"})
+			"message": "Failed to get product detail",
+		})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -97,7 +106,8 @@ func UpdateProductInfo(c *gin.Context) {
 	if err := c.ShouldBindJSON(&productInfo); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": err.Error()})
+			"message": err.Error(),
+		})
 		return
 	}
 
@@ -105,13 +115,15 @@ func UpdateProductInfo(c *gin.Context) {
 	if !success {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to update product"})
+			"message": "Failed to update product",
+		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Product updated successfully"})
+		"message": "Product updated successfully",
+	})
 }
 
 func DeleteProduct(c *gin.Context) {
@@ -120,12 +132,14 @@ func DeleteProduct(c *gin.Context) {
 	if !success {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to delete product"})
+			"message": "Failed to delete product",
+		})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Product deleted successfully"})
+		"message": "Product deleted successfully",
+	})
 }
 
 func GetStock(c *gin.Context) {
@@ -135,7 +149,8 @@ func GetStock(c *gin.Context) {
 	if !success {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to check stock"})
+			"message": "Failed to check stock",
+		})
 		return
 	}
 
@@ -146,7 +161,8 @@ func GetStock(c *gin.Context) {
 		"message": message,
 		"data": gin.H{
 			"remainingStock": remainingStock,
-		}})
+		},
+	})
 }
 
 func UpdateStock(c *gin.Context) {
@@ -158,10 +174,12 @@ func UpdateStock(c *gin.Context) {
 	if !success {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": msg})
+			"message": msg,
+		})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": msg})
+		"message": msg,
+	})
 }

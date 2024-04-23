@@ -1,3 +1,6 @@
+/*
+Package auth provides functions to send email to users for email verification and password recovery.
+*/
 package auth
 
 import (
@@ -21,7 +24,6 @@ func getAccessToken() (string, string) {
 
 	client := &http.Client{}
 	req, err := http.NewRequest(method, url, nil)
-
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -99,7 +101,6 @@ func SendEmailTo(email, token string) error {
 
 	client := &http.Client{}
 	req, err := http.NewRequest(method, requestUrl, payload)
-
 	if err != nil {
 		log.Fatal(err)
 		return err
@@ -179,7 +180,6 @@ func SendResetEmailTo(email, token, name string) error {
 
 	client := &http.Client{}
 	req, err := http.NewRequest(method, requestUrl, payload)
-
 	if err != nil {
 		log.Fatal(err)
 		return err

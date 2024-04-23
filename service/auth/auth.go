@@ -1,3 +1,6 @@
+/*
+Package auth provides functions to handle user authentication and authorization.
+*/
 package auth
 
 import (

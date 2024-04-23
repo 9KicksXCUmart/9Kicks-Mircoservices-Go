@@ -1,3 +1,6 @@
+/*
+Package controller provides the implementation of the review controller functions.
+*/
 package controller
 
 import (
@@ -26,7 +29,8 @@ func AddReview(c *gin.Context) {
 	if err := c.ShouldBindJSON(&newReview); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": err.Error()})
+			"message": err.Error(),
+		})
 		return
 	}
 
@@ -34,13 +38,15 @@ func AddReview(c *gin.Context) {
 	if !success {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to create review"})
+			"message": "Failed to create review",
+		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Review created successfully"})
+		"message": "Review created successfully",
+	})
 }
 
 func GetReviewList(c *gin.Context) {
@@ -48,7 +54,8 @@ func GetReviewList(c *gin.Context) {
 	if productId == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": "Product ID is required"})
+			"message": "Product ID is required",
+		})
 		return
 	}
 
@@ -56,14 +63,16 @@ func GetReviewList(c *gin.Context) {
 	if !success {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to retrieve reviews"})
+			"message": "Failed to retrieve reviews",
+		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Reviews retrieved successfully",
-		"data":    reviews})
+		"data":    reviews,
+	})
 }
 
 func GetUserReviews(c *gin.Context) {
@@ -77,7 +86,8 @@ func GetUserReviews(c *gin.Context) {
 	if len(parts) != 2 || parts[0] != "Bearer" {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
-			"message": "Invalid Authorization header format"})
+			"message": "Invalid Authorization header format",
+		})
 		return
 	}
 
@@ -87,7 +97,8 @@ func GetUserReviews(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
-			"message": "Invalid token"})
+			"message": "Invalid token",
+		})
 		return
 	}
 
@@ -95,7 +106,8 @@ func GetUserReviews(c *gin.Context) {
 	if !success {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Failed to retrieve reviews"})
+			"message": "Failed to retrieve reviews",
+		})
 		return
 	}
 
@@ -104,6 +116,7 @@ func GetUserReviews(c *gin.Context) {
 		"message": "Reviews retrieved successfully",
 		"data": gin.H{
 			"user":    claims.Email,
-			"reviews": reviews},
+			"reviews": reviews,
+		},
 	})
 }

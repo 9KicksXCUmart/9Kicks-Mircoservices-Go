@@ -1,3 +1,6 @@
+/*
+dao package provides the data access layer for the product model.
+*/
 package dao
 
 import (
